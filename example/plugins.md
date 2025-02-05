@@ -9,6 +9,14 @@
 
 {% avatar user='osteele' size=24 %}
 
+## Env
+
+{% env BASE_URL %}
+
+{% env varname='BASE_URL' %}
+
+x{% env XNOTFOUNDX %}x
+
 ## Gist
 
 (From <https://jekyllrb.com/docs/templates/>)
