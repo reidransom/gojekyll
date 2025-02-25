@@ -11,9 +11,9 @@
 
 ## Env
 
-{% env BASE_URL %}
+{% env PWD %}
 
-{% env varname='BASE_URL' %}
+{% env varname='PWD' %}
 
 x{% env XNOTFOUNDX %}x
 
