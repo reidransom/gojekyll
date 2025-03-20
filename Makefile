@@ -19,6 +19,9 @@ $(BINARY): $(SOURCES)
 
 build: $(BINARY) ## compile the package
 
+buildlinux:
+	GOOS=linux go build ${LDFLAGS} -o dist/${BINARY}-linux-arm64 ${PACKAGE}
+
 clean:
 	rm -f ${BINARY}
 
