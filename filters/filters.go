@@ -66,6 +66,10 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config) {
 		return date.Format(time.RFC822)
 		// Out: Mon, 07 Nov 2008 13:07:54 -0800
 	})
+	e.RegisterFilter("date_to_string_us", func(date time.Time) string {
+		return date.Format("Jan 2, 2006")
+		// Out: Nov 7, 2008
+	})
 	e.RegisterFilter("date_to_string", func(date time.Time) string {
 		return date.Format("02 Jan 2006")
 		// Out: 07 Nov 2008
