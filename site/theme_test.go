@@ -1,7 +1,6 @@
 package site
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,7 +11,7 @@ import (
 
 func TestFindTheme(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := ioutil.TempDir("", "gojekyll-theme-test")
+	tempDir, err := os.MkdirTemp("", "gojekyll-theme-test")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -43,7 +42,7 @@ func TestFindTheme(t *testing.T) {
 
 	t.Run("theme not found anywhere", func(t *testing.T) {
 		// Use a clean temp directory without the theme
-		cleanTempDir, err := ioutil.TempDir("", "gojekyll-theme-test-clean")
+		cleanTempDir, err := os.MkdirTemp("", "gojekyll-theme-test-clean")
 		require.NoError(t, err)
 		defer os.RemoveAll(cleanTempDir)
 
@@ -110,7 +109,7 @@ func TestFindTheme(t *testing.T) {
 
 func TestReadThemeAssets(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := ioutil.TempDir("", "gojekyll-theme-assets-test")
+	tempDir, err := os.MkdirTemp("", "gojekyll-theme-assets-test")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -123,7 +122,7 @@ func TestReadThemeAssets(t *testing.T) {
 		
 		// Create a test asset file
 		testAsset := filepath.Join(assetsDir, "style.css")
-		err = ioutil.WriteFile(testAsset, []byte("body { color: red; }"), 0644)
+		err = os.WriteFile(testAsset, []byte("body { color: red; }"), 0644)
 		require.NoError(t, err)
 
 		flags := config.Flags{}
