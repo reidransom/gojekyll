@@ -13,9 +13,18 @@ func (s *Site) findTheme() error {
 	if s.cfg.Theme == "" {
 		return nil
 	}
+
+	// First, try to find theme in _theme folder
+	themeDir := filepath.Join(s.AbsDir(), "_theme", s.cfg.Theme)
+	if _, err := os.Stat(themeDir); err == nil {
+		s.themeDir = themeDir
+		return nil
+	}
+
+	// Fallback to using bundle
 	exe, err := exec.LookPath("bundle")
 	if err != nil {
-		log.Fatal("bundle is not in your PATH", err)
+		return fmt.Errorf("the %s theme could not be found in _theme folder and bundle is not available", s.cfg.Theme)
 	}
 	cmd := exec.Command(exe, "show", s.cfg.Theme)
 	cmd.Dir = s.AbsDir()
