@@ -68,6 +68,12 @@ func (d *templateDoc) Content() string {
 	if err != nil {
 		panic(err)
 	}
+
+	// Don't minify XML files (like sitemap.xml)
+	if len(d.Path) > 4 && d.Path[len(d.Path)-4:] == ".xml" {
+		return string(b)
+	}
+
 	m := minify.New()
 	m.AddFunc("text/html", html.Minify)
 	min := bytes.NewBuffer(make([]byte, 0, len(b)))
