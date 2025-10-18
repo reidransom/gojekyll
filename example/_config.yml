@@ -25,3 +25,6 @@ config_data:
   k5: fourth
   k4: fifth
   k3: sixth
+
+include:
+  - _pages

@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/osteele/gojekyll/collection"
 	"github.com/osteele/gojekyll/config"
@@ -68,12 +67,10 @@ func (s *Site) readFiles(dir, base string) error {
 		switch {
 		case info.IsDir() && s.Exclude(rel):
 			return filepath.SkipDir
-		case info.IsDir():
-			return nil
-		case s.Exclude(rel):
-			return nil
-		case strings.HasPrefix(rel, "_"):
-			return nil
+	  case info.IsDir():
+	  	return nil
+	  case s.Exclude(rel):
+	  	return nil
 		}
 		defaultFrontmatter := s.cfg.GetFrontMatterDefaults("", rel)
 		d, err := pages.NewFile(s, filename, filepath.ToSlash(rel), defaultFrontmatter)
