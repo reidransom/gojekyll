@@ -79,7 +79,11 @@ func (s *Site) htmlPages() (result []Page) {
 func (s *Site) staticFiles() (result []*pages.StaticFile) {
 	for _, d := range s.docs {
 		if sd, ok := d.(*pages.StaticFile); ok {
-			result = append(result, sd)
+			// Exclude config files from static files
+			relPath := sd.URL()[1:] // Remove leading slash
+			if !s.cfg.IsConfigPath(relPath) {
+				result = append(result, sd)
+			}
 		}
 	}
 	return

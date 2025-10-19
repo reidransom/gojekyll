@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/osteele/gojekyll/collection"
 	"github.com/osteele/gojekyll/config"
@@ -79,7 +80,12 @@ func (s *Site) readFiles(dir, base string) error {
 		}
 		s.AddDocument(d, true)
 		if p, ok := d.(Page); ok {
-			s.nonCollectionPages = append(s.nonCollectionPages, p)
+			// Only add pages that don't belong to any collection
+			// Collection pages are in directories starting with '_' (like _posts, _coll1, etc.)
+			dir := filepath.Dir(rel)
+			if dir == "." || !strings.HasPrefix(filepath.Base(dir), "_") {
+				s.nonCollectionPages = append(s.nonCollectionPages, p)
+			}
 		}
 		return nil
 	})
