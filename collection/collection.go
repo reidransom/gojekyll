@@ -8,7 +8,7 @@ import (
 	"github.com/osteele/gojekyll/config"
 	"github.com/osteele/gojekyll/pages"
 	"github.com/osteele/gojekyll/renderers"
-	"github.com/osteele/gojekyll/templates"
+	"github.com/osteele/gojekyll/utils"
 	"github.com/osteele/liquid"
 )
 
@@ -62,7 +62,7 @@ func (c *Collection) PathPrefix() string { return filepath.FromSlash("_" + c.Nam
 func (c *Collection) IsPostsCollection() bool { return c.Name == postsName }
 
 // Output returns a bool indicating whether files in this collection should be written.
-func (c *Collection) Output() bool { return templates.VariableMap(c.Metadata).Bool("output", false) }
+func (c *Collection) Output() bool { return getBool(c.Metadata, "output", false) }
 
 // Pages in the Post collection are ordered by date.
 func (c *Collection) Pages() []Page {
@@ -83,7 +83,7 @@ func (c *Collection) Render() error {
 // ToLiquid returns the value of the collection in the template
 // "collections" array.
 func (c *Collection) ToLiquid() interface{} {
-	return liquid.IterationKeyedMap(templates.MergeVariableMaps(
+	return liquid.IterationKeyedMap(utils.MergeStringMaps(
 		c.Metadata,
 		map[string]interface{}{
 			"label":              c.Name,
@@ -97,5 +97,24 @@ func (c *Collection) ToLiquid() interface{} {
 // PermalinkPattern returns the default permalink pattern for this collection.
 func (c *Collection) PermalinkPattern() string {
 	pattern := c.strategy().defaultPermalinkPattern(c.cfg)
-	return templates.VariableMap(c.Metadata).String("permalink", pattern)
+	return getString(c.Metadata, "permalink", pattern)
+}
+
+// Helper functions to avoid importing templates package
+func getBool(m map[string]interface{}, key string, defaultValue bool) bool {
+	if val, found := m[key]; found {
+		if v, ok := val.(bool); ok {
+			return v
+		}
+	}
+	return defaultValue
+}
+
+func getString(m map[string]interface{}, key string, defaultValue string) string {
+	if val, found := m[key]; found {
+		if v, ok := val.(string); ok {
+			return v
+		}
+	}
+	return defaultValue
 }

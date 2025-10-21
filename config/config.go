@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/osteele/gojekyll/templates"
 	"github.com/osteele/gojekyll/utils"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -131,7 +130,7 @@ func (c *Config) GetFrontMatterDefaults(typename, rel string) (m map[string]inte
 		hasPrefix := strings.HasPrefix(rel, scope.Path)
 		hasType := scope.Type == "" || scope.Type == typename
 		if hasPrefix && hasType {
-			m = templates.MergeVariableMaps(m, entry.Values)
+			m = utils.MergeStringMaps(m, entry.Values)
 		}
 	}
 	return
