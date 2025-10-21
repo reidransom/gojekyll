@@ -6,7 +6,7 @@ import (
 
 	"github.com/osteele/gojekyll/pages"
 	"github.com/osteele/gojekyll/plugins"
-	"github.com/osteele/gojekyll/templates"
+	"github.com/osteele/gojekyll/utils"
 	"github.com/osteele/liquid"
 )
 
@@ -25,7 +25,7 @@ func (s *Site) initializeDrop() error {
 	for _, c := range s.Collections {
 		docs = append(docs, c.Pages()...)
 	}
-	drop := templates.MergeVariableMaps(s.cfg.Variables(), map[string]interface{}{
+	drop := utils.MergeStringMaps(s.cfg.Variables(), map[string]interface{}{
 		"collections":  s.collectionDrops(),
 		"data":         s.data,
 		"documents":    docs,

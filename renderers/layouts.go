@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/osteele/gojekyll/frontmatter"
-	"github.com/osteele/gojekyll/templates"
 	"github.com/osteele/gojekyll/utils"
 	"github.com/osteele/liquid"
 )
@@ -28,7 +27,7 @@ func (p *Manager) ApplyLayout(name string, content []byte, vars liquid.Bindings)
 		if err != nil {
 			return nil, utils.WrapPathError(err, name)
 		}
-		name = templates.VariableMap(lfm).String("layout", "")
+		name = getString(lfm, "layout", "")
 	}
 	return content, nil
 }
@@ -84,4 +83,14 @@ func (p *Manager) layoutDirs() []string {
 		dirs = append(dirs, filepath.Join(p.ThemeDir, "_layouts"))
 	}
 	return dirs
+}
+
+// getString returns m[k] if it's a string; else defaultValue.
+func getString(m map[string]interface{}, k string, defaultValue string) string {
+	if val, found := m[k]; found {
+		if v, ok := val.(string); ok {
+			return v
+		}
+	}
+	return defaultValue
 }
