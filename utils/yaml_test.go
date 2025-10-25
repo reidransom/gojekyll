@@ -3,8 +3,6 @@ package utils
 import (
 	"testing"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,11 +14,12 @@ func TestUnmarshalYAML(t *testing.T) {
 	err := UnmarshalYAMLInterface([]byte(mapYaml), &d)
 	require.NoError(t, err)
 	switch d := d.(type) {
-	case yaml.MapSlice:
+	case map[string]interface{}:
 		require.Len(t, d, 2)
-		require.Equal(t, yaml.MapItem{Key: "a", Value: 1}, d[0])
+		require.Equal(t, 1, d["a"])
+		require.Equal(t, 2, d["b"])
 	default:
-		require.IsType(t, map[interface{}]interface{}{}, d)
+		require.IsType(t, map[string]interface{}{}, d)
 	}
 
 	err = UnmarshalYAMLInterface([]byte(listYaml), &d)
@@ -30,7 +29,8 @@ func TestUnmarshalYAML(t *testing.T) {
 	case []interface{}:
 		require.Len(t, d, 2)
 		require.Equal(t, "a", d[0])
+		require.Equal(t, "b", d[1])
 	default:
-		require.IsType(t, d, map[interface{}]interface{}{})
+		require.IsType(t, d, map[string]interface{}{})
 	}
 }
