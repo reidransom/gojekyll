@@ -12,8 +12,8 @@ import (
 // The first four bytes of a file with front matter.
 const fmMagic = "---\n"
 
-var frontMatterMatcher = regexp.MustCompile(`(?s)^---\n(.+?\n)---\n+`)
-var emptyFontMatterMatcher = regexp.MustCompile(`(?s)^---\n+---\n+`)
+var frontMatterMatcher = regexp.MustCompile(`(?s)^---\n(.+?\n)---\n*`)
+var emptyFontMatterMatcher = regexp.MustCompile(`(?s)^---\n+---\n*`)
 
 // FileHasFrontMatter returns a bool indicating whether the
 // file looks like it has frontmatter.

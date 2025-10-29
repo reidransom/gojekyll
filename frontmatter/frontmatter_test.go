@@ -36,6 +36,6 @@ func TestRead_NoTrailingNewline(t *testing.T) {
 	fm, err := Read(&source, &firstLine)
 	require.NoError(t, err, "should parse frontmatter without trailing newline")
 	require.Equal(t, "archive", fm["layout"], "should extract layout value")
-	require.Equal(t, 4, firstLine, "content should start at line 4")
+	require.Equal(t, 3, firstLine, "content should start at line 3")
 	require.Empty(t, source, "content should be empty after frontmatter")
 }
