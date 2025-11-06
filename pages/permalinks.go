@@ -62,6 +62,14 @@ func (p *page) permalinkVariables() map[string]string {
 	for k, v := range permalinkDateVariables {
 		vars[k] = date.Format(v)
 	}
+	// Add custom front matter variables to support custom permalinks like /:collection/:color/:path
+	for k, v := range p.fm {
+		if _, exists := vars[k]; !exists {
+			if s, ok := v.(string); ok {
+				vars[k] = utils.Slugify(s)
+			}
+		}
+	}
 	return vars
 }
 
