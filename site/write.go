@@ -43,12 +43,20 @@ func (s *Site) WriteFiles() (count int, err error) {
 		}(d)
 	}
 	var errList []error
+	var hasNotExistErr bool
 	for i := 0; i < count; i++ {
 		if e := <-errs; e != nil {
 			errList = append(errList, e)
+			if os.IsNotExist(e) {
+				hasNotExistErr = true
+			}
 		}
 	}
-	return count, combineErrors(errList)
+	err = combineErrors(errList)
+	if err != nil && hasNotExistErr {
+		return count, fmt.Errorf("%v\n\nHint: Try running 'gojekyll clean' to remove stale files from the destination directory", err)
+	}
+	return count, err
 }
 
 // WriteDoc writes a document to the destination directory.
