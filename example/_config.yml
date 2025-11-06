@@ -8,6 +8,9 @@ collections:
     permalink: /:collection/:path
   c2:
     output: true
+  c3:
+    output: true
+    permalink: /:collection/:color/:path
 
 plugins:
   - jekyll-avatar
