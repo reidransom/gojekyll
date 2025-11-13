@@ -44,3 +44,21 @@ func TestExclude(t *testing.T) {
 	require.True(t, s.Exclude("~file"))
 	require.True(t, s.Exclude("file~"))
 }
+
+func TestIsIncludedPath(t *testing.T) {
+	s := New(config.Flags{})
+	s.cfg.Include = append(s.cfg.Include, "_pages")
+	
+	// _pages and its files should be included
+	require.True(t, s.isIncludedPath("_pages"))
+	require.True(t, s.isIncludedPath("_pages/about.md"))
+	require.True(t, s.isIncludedPath("_pages/contact.html"))
+	
+	// Other underscore dirs should not be included
+	require.False(t, s.isIncludedPath("_other"))
+	require.False(t, s.isIncludedPath("_other/file.md"))
+	
+	// Regular dirs should not match
+	require.False(t, s.isIncludedPath("pages"))
+	require.False(t, s.isIncludedPath("pages/about.md"))
+}
