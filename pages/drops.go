@@ -50,6 +50,7 @@ func (p *page) ToLiquid() interface{} {
 		"date":          fm.Get("date", p.modTime),
 		"excerpt":       p.Excerpt(),
 		"id":            utils.TrimExt(p.URL()),
+		"name":          filepath.Base(siteRelPath),
 		"path":          siteRelPath,
 		"relative_path": siteRelPath,
 		"slug":          fm.String("slug", utils.Slugify(utils.TrimExt(filepath.Base(p.relPath)))),
