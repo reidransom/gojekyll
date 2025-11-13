@@ -58,6 +58,17 @@ func (s *Site) Read() error {
 	return s.runHooks(func(p plugins.Plugin) error { return p.PostReadSite(s) })
 }
 
+// isIncludedPath checks if a path or its parent directory is explicitly in the include list
+func (s *Site) isIncludedPath(siteRel string) bool {
+	for siteRel != "." && siteRel != "" {
+		if utils.MatchList(s.cfg.Include, siteRel) {
+			return true
+		}
+		siteRel = filepath.Dir(siteRel)
+	}
+	return false
+}
+
 // readFiles scans the source directory and creates pages and collection.
 func (s *Site) readFiles(dir, base string) error {
 	return filepath.Walk(dir, func(filename string, info os.FileInfo, err error) error {
@@ -82,8 +93,9 @@ func (s *Site) readFiles(dir, base string) error {
 		if p, ok := d.(Page); ok {
 			// Only add pages that don't belong to any collection
 			// Collection pages are in directories starting with '_' (like _posts, _coll1, etc.)
+			// However, explicitly included directories (via include config) should be added
 			dir := filepath.Dir(rel)
-			if dir == "." || !strings.HasPrefix(filepath.Base(dir), "_") {
+			if dir == "." || !strings.HasPrefix(filepath.Base(dir), "_") || s.isIncludedPath(rel) {
 				s.nonCollectionPages = append(s.nonCollectionPages, p)
 			}
 		}
