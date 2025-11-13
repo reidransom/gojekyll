@@ -43,6 +43,16 @@ func TestPage_ToLiquid_excerpt(t *testing.T) {
 	})
 }
 
+func TestPage_ToLiquid_name(t *testing.T) {
+	site := siteFake{t, config.Default()}
+	p, err := NewFile(site, "testdata/excerpt.md", "excerpt.md", map[string]interface{}{})
+	require.NoError(t, err)
+
+	drop := p.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap)
+	require.Equal(t, "excerpt.md", drop["name"])
+	require.Equal(t, "testdata/excerpt.md", drop["path"])
+}
+
 type renderer interface {
 	Render() error
 }
