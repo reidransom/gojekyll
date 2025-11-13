@@ -25,8 +25,18 @@ func TestIncludeTag(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "include target", strings.TrimSpace(s))
 
-	// TODO {% include {{ page.my_variable }} %}
-	// TODO {% include note.html content="This is my sample note." %}
+	// Test {% include {{ page.my_variable }} %}
+	bindings["page"] = map[string]interface{}{
+		"my_variable": "variable_target.html",
+	}
+	s, err = engine.ParseAndRenderString(`{% include {{ page.my_variable }} %}`, bindings)
+	require.NoError(t, err)
+	require.Equal(t, "variable include target", strings.TrimSpace(s))
+
+	// Test {% include note.html content="This is my sample note." %}
+	s, err = engine.ParseAndRenderString(`{% include note.html content="This is my sample note." %}`, bindings)
+	require.NoError(t, err)
+	require.Equal(t, "Note: This is my sample note.", strings.TrimSpace(s))
 }
 
 func TestIncludeRelativeTag(t *testing.T) {
