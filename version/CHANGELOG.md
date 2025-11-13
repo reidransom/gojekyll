@@ -1,6 +1,15 @@
 # Release Notes
 <!-- markdownlint-disable MD024 -->
 
+## 0.4.0 (Nov 13, 2024)
+
+### New
+* Added name attribute to page drops
+* Added include tag with variable support
+
+### Improved
+* Upgraded liquid dependency
+
 ## 0.3 (unreleased)
 
 ### Contributions
