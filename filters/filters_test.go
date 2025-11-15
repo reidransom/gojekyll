@@ -43,6 +43,11 @@ var filterTests = []struct{ in, expected string }{
 	{`{{ page.tags | shift }}`, "Tacoma"},
 	{`{{ page.tags | unshift: "Olympia" | join }}`, "Olympia Seattle Tacoma"},
 
+	{`{{ array | limit: 2 | join }}`, "first second"},
+	{`{{ array | limit: 0 }}`, ""},
+	{`{{ array | limit: 10 | join }}`, "first second third"},
+	{`{{ page.tags | limit: 1 | join }}`, "Seattle"},
+
 	// strings
 	{`{{ "/assets/style.css" | relative_url }}`, "/my-baseurl/assets/style.css"},
 	{`{{ "/assets/style.css" | absolute_url }}`, "http://example.com/my-baseurl/assets/style.css"},
