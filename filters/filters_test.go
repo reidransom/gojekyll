@@ -48,6 +48,10 @@ var filterTests = []struct{ in, expected string }{
 	{`{{ array | limit: 10 | join }}`, "first second third"},
 	{`{{ page.tags | limit: 1 | join }}`, "Seattle"},
 
+	{`{{ uniq_array | uniq | join }}`, "a b c"},
+	{`{{ empty_array | uniq | size }}`, "0"},
+	{`{{ all_same | uniq | join }}`, "x"},
+
 	// strings
 	{`{{ "/assets/style.css" | relative_url }}`, "/my-baseurl/assets/style.css"},
 	{`{{ "/assets/style.css" | absolute_url }}`, "http://example.com/my-baseurl/assets/style.css"},
@@ -109,6 +113,9 @@ var filterTestBindings = liquid.Bindings{
 	},
 	"time": timeMustParse("2008-11-07T13:07:54Z"),
 	"ws":   "a  b\n\t c",
+	"uniq_array": []string{"a", "b", "a", "c", "b"},
+	"empty_array": []string{},
+	"all_same": []string{"x", "x", "x"},
 }
 
 func TestFilters(t *testing.T) {

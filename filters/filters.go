@@ -48,6 +48,7 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config) {
 	e.RegisterFilter("where", whereFilter) // TODO test case
 	e.RegisterFilter("where_exp", whereExpFilter)
 	e.RegisterFilter("limit", limitFilter)
+	e.RegisterFilter("uniq", uniqFilter)
 	e.RegisterFilter("xml_escape", xml.Marshal)
 	e.RegisterFilter("push", func(array []interface{}, item interface{}) interface{} {
 		return append(array, evaluator.MustConvertItem(item, array))
@@ -301,6 +302,23 @@ func limitFilter(array []interface{}, limit int) []interface{} {
 		return array
 	}
 	return array[:limit]
+}
+
+func uniqFilter(array []interface{}) []interface{} {
+	if len(array) == 0 {
+		return array
+	}
+	seen := make(map[interface{}]bool)
+	result := []interface{}{}
+	for _, item := range array {
+		// Use string representation for comparison to handle different types
+		key := fmt.Sprint(item)
+		if !seen[key] {
+			seen[key] = true
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 // string filters
