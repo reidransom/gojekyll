@@ -12,6 +12,7 @@ The functionality of some plugins is built into the core program:
 | [jekyll-feed][jekyll-feed]                                   | GitHub Pages  | ✓                     |                                                                                                                                       |
 | [jekyll-gist][jekyll-gist]                                   | core³         | ✓                     | `noscript` option                                                                                                                     |
 | [jekyll-github-metadata][jekyll-github-metadata]             | GitHub Pages  | partial               | `contributors`, `public_repositories`, `show_downloads`, `releases`, `versions`, `wiki_url`; Octokit configuration; GitHub Enterprise |
+| [jekyll-inherit-frontmatter][jekyll-inherit-frontmatter]     | custom⁵       | ✓                     | See [documentation](jekyll-inherit-frontmatter.md)                                                                                    |
 | [jekyll-live-reload][jekyll-live-reload]                     | core          | ✓                     | always enabled (by design); no way to disable                                                                                         |
 | [jekyll-mentions][jekyll-mentions]                           | GitHub Pages  | ✓                     |                                                                                                                                       |
 | [jekyll-optional-front-matter][jekyll-optional-front-matter] | GitHub Pages  |                       |                                                                                                                                       |
@@ -36,12 +37,15 @@ The [Official Plugins](https://jekyllrb.com/docs/plugins/#available-plugins) sec
 
 ⁴ These don't seem that useful with source control and CI. (Post dates are included.)
 
+⁵ Custom plugins implemented specifically for gojekyll.
+
 [jekyll-avatar]: https://github.com/benbalter/jekyll-avatar
 [jekyll-coffeescript]: https://github.com/jekyll/jekyll-coffeescript
 [jekyll-default-layout]: https://github.com/benbalter/jekyll-default-layout
 [jekyll-feed]: https://github.com/jekyll/jekyll-feed
 [jekyll-gist]: https://github.com/jekyll/jekyll-gist
 [jekyll-github-metadata]: https://github.com/parkr/github-metadata
+[jekyll-inherit-frontmatter]: jekyll-inherit-frontmatter.md
 [jekyll-live-reload]: https://github.com/RobertDeRose/jekyll-livereload
 [jekyll-mentions]: https://github.com/jekyll/jekyll-mentions
 [jekyll-optional-front-matter]: https://github.com/benbalter/jekyll-optional-front-matter
