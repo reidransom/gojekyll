@@ -9,7 +9,8 @@ import (
 
 func TestParseAndRun(t *testing.T) {
 	// Clean up _site directory before test
-	os.RemoveAll("testdata/site/_site")
-	err := ParseAndRun([]string{"build", "-s", "testdata/site", "-q"})
+err := os.RemoveAll("testdata/site/_site")
+	require.NoError(t, err)
+err = ParseAndRun([]string{"build", "-s", "testdata/site", "-q"})
 	require.NoError(t, err)
 }

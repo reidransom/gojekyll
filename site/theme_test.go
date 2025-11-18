@@ -13,7 +13,7 @@ func TestFindTheme(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "gojekyll-theme-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 
 	t.Run("no theme specified", func(t *testing.T) {
 		flags := config.Flags{}
@@ -44,7 +44,7 @@ func TestFindTheme(t *testing.T) {
 		// Use a clean temp directory without the theme
 		cleanTempDir, err := os.MkdirTemp("", "gojekyll-theme-test-clean")
 		require.NoError(t, err)
-		defer os.RemoveAll(cleanTempDir)
+defer func() { require.NoError(t, os.RemoveAll(cleanTempDir)) }()
 
 		flags := config.Flags{}
 		s := New(flags)
@@ -111,7 +111,7 @@ func TestReadThemeAssets(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "gojekyll-theme-assets-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 
 	t.Run("theme has assets directory", func(t *testing.T) {
 		// Create theme with assets
