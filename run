@@ -22,7 +22,7 @@ function _get_version {
 function _get_ldflags {
   VERSION=$(_get_version)
   BUILD_DATE=$(date +%FT%T%z)
-  echo "-ldflags \"-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDate=${BUILD_DATE}\""
+  echo "-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDate=${BUILD_DATE}"
 }
 
 function test {
@@ -31,14 +31,14 @@ function test {
 
 function build {
   LDFLAGS=$(_get_ldflags)
-  go build $LDFLAGS -o $BINARY $PACKAGE
+  go build -ldflags "$LDFLAGS" -o $BINARY $PACKAGE
 }
 
 function buildlinux {
   LDFLAGS=$(_get_ldflags)
   mkdir -p dist
-  GOOS=linux GOARCH=amd64 go build $LDFLAGS -o dist/${BINARY}-linux-amd64 $PACKAGE
-  GOOS=linux GOARCH=arm64 go build $LDFLAGS -o dist/${BINARY}-linux-arm64 $PACKAGE
+  GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/${BINARY}-linux-amd64 $PACKAGE
+  GOOS=linux GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/${BINARY}-linux-arm64 $PACKAGE
 }
 
 function release {
@@ -90,7 +90,7 @@ function clean {
 
 function install {
   LDFLAGS=$(_get_ldflags)
-  go install $LDFLAGS $PACKAGE
+  go install -ldflags "$LDFLAGS" $PACKAGE
 }
 
 function help {
