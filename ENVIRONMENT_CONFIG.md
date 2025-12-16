@@ -6,12 +6,23 @@ gojekyll now supports environment-based configuration through an `_admin.yml` fi
 
 ## Usage
 
+### With Environment Overrides
+
 Use the `--env` flag to specify which environment configuration to use:
 
 ```bash
 gojekyll --env=prod build
 gojekyll --env=stg serve
 gojekyll --env=dev build --watch
+```
+
+### Without Environment Flag
+
+If `_admin.yml` exists and no `--env` flag is provided, gojekyll will automatically use the `base` configuration:
+
+```bash
+gojekyll build  # Uses _admin.yml base config if it exists
+gojekyll serve  # Uses _admin.yml base config if it exists
 ```
 
 ## Configuration File Structure
@@ -49,7 +60,8 @@ site:
 1. **Base Configuration**: All environments inherit from the `site.base` section
 2. **Environment Overrides**: Values in environment-specific sections (e.g., `site.prod`) override the base values
 3. **Deep Merging**: Nested maps are merged recursively, so you only need to specify the values that change
-4. **Fallback**: If no `--env` flag is provided, gojekyll falls back to the standard `_config.yml` file
+4. **Automatic Loading**: If `_admin.yml` exists, it will be used automatically (with base config) even without the `--env` flag
+5. **Fallback**: If `_admin.yml` doesn't exist, gojekyll uses the standard `_config.yml` file
 
 ## Example
 
@@ -98,5 +110,6 @@ gojekyll --env=prod build
 ## Compatibility
 
 - This feature is fully backward compatible
-- If no `--env` flag is provided, gojekyll behaves exactly as before, using `_config.yml`
+- If no `_admin.yml` exists, gojekyll behaves exactly as before, using `_config.yml`
 - Existing sites will continue to work without any changes
+- Sites using `_admin.yml` no longer need to specify `--env` to use the base configuration
