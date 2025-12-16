@@ -59,7 +59,7 @@ loop:
 		}
 	}
 	if !found {
-		return nil, fmt.Errorf("no template for %s", base)
+		return nil, fmt.Errorf("layout not found: %s (searched in: %s)", base, strings.Join(p.layoutDirs(), ", "))
 	}
 	lineNo := 1
 	fm, err := frontmatter.Read(&content, &lineNo)
