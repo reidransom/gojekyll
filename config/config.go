@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,7 +79,52 @@ type Config struct {
 
 // FromDirectory updates the config from the config file in
 // the directory, if such a file exists.
-func (c *Config) FromDirectory(dir string) error {
+func (c *Config) FromDirectory(dir string, environment string) error {
+	// Try _admin.yml first if environment is specified
+	if environment != "" {
+		adminPath := filepath.Join(dir, "_admin.yml")
+		if bytes, err := os.ReadFile(adminPath); err == nil {
+			// Parse _admin.yml structure
+			var adminConfig struct {
+				Site map[string]interface{} `yaml:"site"`
+			}
+			if err := yaml.Unmarshal(bytes, &adminConfig); err != nil {
+				return utils.WrapPathError(err, adminPath)
+			}
+
+			// Get base and environment-specific config
+			baseConfig, hasBase := adminConfig.Site["base"].(map[interface{}]interface{})
+			envConfig, hasEnv := adminConfig.Site[environment].(map[interface{}]interface{})
+
+			if !hasBase {
+				return utils.WrapPathError(
+					errors.New("_admin.yml must have a site.base section"),
+					adminPath,
+				)
+			}
+
+			// Merge base with environment overrides
+			mergedConfig := baseConfig
+			if hasEnv {
+				mergedConfig = mergeYAMLMaps(baseConfig, envConfig)
+			}
+
+			// Convert merged config to YAML bytes and unmarshal into Config
+			mergedBytes, err := yaml.Marshal(mergedConfig)
+			if err != nil {
+				return err
+			}
+
+			if err = Unmarshal(mergedBytes, c); err != nil {
+				return utils.WrapPathError(err, adminPath)
+			}
+			c.ConfigFile = adminPath + " (env: " + environment + ")"
+			c.Source = dir
+			return nil
+		}
+	}
+
+	// Fall back to _config.yml
 	path := filepath.Join(dir, "_config.yml")
 	bytes, err := os.ReadFile(path)
 	switch {
@@ -230,4 +276,30 @@ func (c *Config) String(key string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// mergeYAMLMaps performs a deep merge of two YAML maps.
+// Values from override will overwrite values in base.
+func mergeYAMLMaps(base, override map[interface{}]interface{}) map[interface{}]interface{} {
+	result := make(map[interface{}]interface{})
+
+	// Copy all values from base
+	for k, v := range base {
+		result[k] = v
+	}
+
+	// Merge/override with values from override
+	for k, v := range override {
+		if vMap, ok := v.(map[interface{}]interface{}); ok {
+			// If both base and override have a map at this key, merge them recursively
+			if baseMap, ok := result[k].(map[interface{}]interface{}); ok {
+				result[k] = mergeYAMLMaps(baseMap, vMap)
+				continue
+			}
+		}
+		// Otherwise, just overwrite
+		result[k] = v
+	}
+
+	return result
 }

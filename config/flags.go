@@ -16,6 +16,7 @@ type Flags struct {
 
 	// these aren't in the config file, so make them actual values
 	DryRun, ForcePolling, Watch bool
+	Environment                 string
 }
 
 // ApplyFlags overwrites the configuration with values from flags.
@@ -32,6 +33,10 @@ func (c *Config) ApplyFlags(f Flags) {
 			}
 			val = val.Elem()
 		}
-		rd.FieldByName(field.Name).Set(val)
+		// Skip fields that don't exist in the Config struct
+		configField := rd.FieldByName(field.Name)
+		if configField.IsValid() && configField.CanSet() {
+			configField.Set(val)
+		}
 	}
 }
