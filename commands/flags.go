@@ -7,9 +7,10 @@ import (
 
 // Command-line options
 var (
-	options config.Flags
-	profile = false
-	quiet   = false
+	options     config.Flags
+	profile     = false
+	quiet       = false
+	environment = ""
 )
 
 var (
@@ -27,6 +28,7 @@ func init() {
 	app.Flag("profile", "Create a Go pprof CPU profile").BoolVar(&profile)
 	app.Flag("quiet", "Silence (some) output.").Short('q').BoolVar(&quiet)
 	_ = app.Flag("verbose", "Print verbose output.").Short('V').Action(boolVar("verbose", &options.Verbose)).Bool()
+	app.Flag("env", "Environment to use from _admin.yml (e.g. prod, stg, dev)").StringVar(&environment)
 
 	// these flags are just present on build and serve, but I don't see a DRY way to say this
 	app.Flag("incremental", "Enable incremental rebuild.").Short('I').Action(boolVar("incremental", &options.Incremental)).Bool()

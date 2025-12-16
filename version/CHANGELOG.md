@@ -1,6 +1,12 @@
 # Release Notes
 <!-- markdownlint-disable MD024 -->
 
+## 0.5.2 (Nov 30, 2024)
+
+### Improved
+* Architecture fixes for local build
+* Handle common Jekyll date formats
+
 ## 0.4.0 (Nov 13, 2024)
 
 ### New

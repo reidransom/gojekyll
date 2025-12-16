@@ -27,6 +27,7 @@ func ParseAndRun(args []string) error {
 		verbose := true
 		options.Verbose = &verbose
 	}
+	options.Environment = environment
 	return run(cmd)
 }
 
