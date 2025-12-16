@@ -91,14 +91,14 @@ func TestFromDirectory_AdminYML_NoEnv(t *testing.T) {
 	err = os.WriteFile(configPath, []byte(configYML), 0644)
 	require.NoError(t, err)
 
-	// When no environment is specified, should use _config.yml
+	// When no environment is specified, should use _admin.yml base config if it exists
 	c := Default()
 	err = c.FromDirectory(tmpDir, "")
 	require.NoError(t, err)
-	require.Equal(t, configPath, c.ConfigFile)
+	require.Contains(t, c.ConfigFile, "_admin.yml (base)")
 	title, ok := c.String("title")
 	require.True(t, ok)
-	require.Equal(t, "Config Title", title)
+	require.Equal(t, "Admin Title", title)
 }
 
 func TestFromDirectory_AdminYML_MissingBase(t *testing.T) {
