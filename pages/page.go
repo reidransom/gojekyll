@@ -189,7 +189,7 @@ func (p *page) Write(w io.Writer) error {
 		rm := p.site.RendererManager()
 		b, err := rm.ApplyLayout(lo, []byte(cn), p.TemplateContext())
 		if err != nil {
-			return err
+			return fmt.Errorf("%s (referenced by page: %s)", err, p.RelPath())
 		}
 		_, err = w.Write(b)
 		return err
