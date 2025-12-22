@@ -52,6 +52,17 @@ func TestCircularInclude(t *testing.T) {
 	_, err := engine.ParseAndRenderString(`{% include self_include.html %}`, bindings)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "include loop")
+
+	// Test indirect circular include (A includes B, B includes A)
+	_, err = engine.ParseAndRenderString(`{% include circular_a.html %}`, bindings)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "include loop")
+
+	// Test valid nested includes still work
+	s, err := engine.ParseAndRenderString(`{% include outer.html %}`, bindings)
+	require.NoError(t, err)
+	require.Contains(t, s, "Outer")
+	require.Contains(t, s, "Inner")
 }
 
 func TestIncludeRelativeTag(t *testing.T) {
