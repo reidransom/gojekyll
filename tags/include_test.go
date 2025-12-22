@@ -39,6 +39,21 @@ func TestIncludeTag(t *testing.T) {
 	require.Equal(t, "Note: This is my sample note.", strings.TrimSpace(s))
 }
 
+func TestCircularInclude(t *testing.T) {
+	engine := liquid.NewEngine()
+	cfg := config.Default()
+	cfg.Source = "testdata"
+	AddJekyllTags(engine, &cfg, []string{"testdata/_includes"}, func(s string) (string, bool) {
+		return "", false
+	})
+	bindings := map[string]interface{}{}
+
+	// Test self-referencing include - should error instead of stack overflow
+	_, err := engine.ParseAndRenderString(`{% include self_include.html %}`, bindings)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "include loop")
+}
+
 func TestIncludeRelativeTag(t *testing.T) {
 	engine := liquid.NewEngine()
 	cfg := config.Default()
