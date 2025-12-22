@@ -25,7 +25,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-replace github.com/osteele/liquid => github.com/reidransom/liquid v1.8.1
+replace github.com/osteele/liquid => github.com/reidransom/liquid v1.8.2
 
 require (
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
