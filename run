@@ -30,6 +30,7 @@ function test {
 }
 
 function build {
+  go mod tidy
   LDFLAGS=$(_get_ldflags)
   go build -ldflags "$LDFLAGS" -o $BINARY $PACKAGE
 }
