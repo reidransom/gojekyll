@@ -12,7 +12,7 @@ func TestFromDirectory_AdminYML(t *testing.T) {
 	// Create a temporary directory with _admin.yml
 	tmpDir, err := os.MkdirTemp("", "gojekyll-test-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	adminYML := `site:
   base:
@@ -75,7 +75,7 @@ func TestFromDirectory_AdminYML_NoEnv(t *testing.T) {
 	// Create a temporary directory with both _admin.yml and _config.yml
 	tmpDir, err := os.MkdirTemp("", "gojekyll-test-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	adminYML := `site:
   base:
@@ -105,7 +105,7 @@ func TestFromDirectory_AdminYML_MissingBase(t *testing.T) {
 	// Create a temporary directory with _admin.yml but no base section
 	tmpDir, err := os.MkdirTemp("", "gojekyll-test-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	adminYML := `site:
   prod:
