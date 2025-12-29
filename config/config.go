@@ -143,6 +143,12 @@ func (c *Config) FromDirectory(dir string, environment string) error {
 		c.ConfigFile = path
 	}
 	c.Source = dir
+	
+	// Override URL from JEKYLL_URL environment variable if set
+	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
+		c.AbsoluteURL = jekyllURL
+	}
+	
 	return nil
 }
 
