@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	register("jekyll-env", jekyllEnvPlugin{})
+	// register("jekyll-env", jekyllEnvPlugin{})
 }
 
 type jekyllEnvPlugin struct{ plugin }
