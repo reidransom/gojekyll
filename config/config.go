@@ -110,22 +110,78 @@ func (c *Config) FromDirectory(dir string, environment string) error {
 				}
 			}
 
-			// Convert merged config to YAML bytes and unmarshal into Config
-			mergedBytes, err := yaml.Marshal(mergedConfig)
-			if err != nil {
-				return err
-			}
+		// Convert merged config to YAML bytes and unmarshal into Config
+		mergedBytes, err := yaml.Marshal(mergedConfig)
+		if err != nil {
+			return err
+		}
 
-			if err = Unmarshal(mergedBytes, c); err != nil {
-				return utils.WrapPathError(err, adminPath)
+		// Save the existing c.ms (from Default()) so we can preserve default values
+		existingMS := c.ms
+		existingM := c.m
+
+		if err = Unmarshal(mergedBytes, c); err != nil {
+			return utils.WrapPathError(err, adminPath)
+		}
+		
+		// Merge the admin config into existing maps instead of replacing them
+		// First update c.m with values from existing that aren't in the new config
+		for k, v := range existingM {
+			if _, exists := c.m[k]; !exists {
+				c.m[k] = v
 			}
-			if environment != "" {
-				c.ConfigFile = adminPath + " (env: " + environment + ")"
+		}
+		
+		// Then update c.ms - keep existing items that aren't overridden, append new ones
+		adminKeys := make(map[interface{}]bool)
+		for _, item := range c.ms {
+			adminKeys[item.Key] = true
+		}
+		
+		// Build new c.ms: existing items updated with admin values, plus new admin items
+		newMS := yaml.MapSlice{}
+		for _, item := range existingMS {
+			if adminKeys[item.Key] {
+				// This key is in admin config, use the admin value
+				for _, adminItem := range c.ms {
+					if adminItem.Key == item.Key {
+						newMS = append(newMS, adminItem)
+						break
+					}
+				}
 			} else {
-				c.ConfigFile = adminPath + " (base)"
+				// This key is not in admin config, keep the default
+				newMS = append(newMS, item)
 			}
-			c.Source = dir
-			return nil
+		}
+		// Add any new keys from admin that weren't in defaults
+		for _, adminItem := range c.ms {
+			found := false
+			for _, item := range existingMS {
+				if item.Key == adminItem.Key {
+					found = true
+					break
+				}
+			}
+			if !found {
+				newMS = append(newMS, adminItem)
+			}
+		}
+		c.ms = newMS
+		if environment != "" {
+			c.ConfigFile = adminPath + " (env: " + environment + ")"
+		} else {
+			c.ConfigFile = adminPath + " (base)"
+		}
+		c.Source = dir
+		
+		// Override URL from JEKYLL_URL environment variable if set
+		if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
+			c.AbsoluteURL = jekyllURL
+			c.Set("url", jekyllURL)
+		}
+		
+		return nil
 	}
 
 	// Fall back to _config.yml
@@ -147,6 +203,7 @@ func (c *Config) FromDirectory(dir string, environment string) error {
 	// Override URL from JEKYLL_URL environment variable if set
 	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
 		c.AbsoluteURL = jekyllURL
+		c.Set("url", jekyllURL)
 	}
 	
 	return nil
@@ -259,9 +316,9 @@ func (c *Config) Variables() map[string]interface{} {
 // This does not update the corresponding value in the Config struct.
 func (c *Config) Set(key string, val interface{}) {
 	c.m[key] = val
-	for _, item := range c.ms {
-		if item.Key == key {
-			item.Value = val
+	for i := range c.ms {
+		if c.ms[i].Key == key {
+			c.ms[i].Value = val
 			return
 		}
 	}
