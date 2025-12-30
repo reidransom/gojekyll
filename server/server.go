@@ -27,7 +27,12 @@ type Server struct {
 // Run runs the server.
 func (s *Server) Run(open bool, logger func(label, value string)) error {
 	cfg := s.Site.Config()
-	s.Site.SetAbsoluteURL("")
+	// Only clear URL if JEKYLL_URL is not set
+	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
+		s.Site.SetAbsoluteURL(jekyllURL)
+	} else {
+		s.Site.SetAbsoluteURL("")
+	}
 	address := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	logger("Server address:", "http://"+address+"/")
 	if cfg.Watch {

@@ -59,6 +59,11 @@ func (s *Server) reload(change site.FilesEvent) {
 		return
 	}
 	s.Site = site
-	s.Site.SetAbsoluteURL("")
+	// Only clear URL if JEKYLL_URL is not set
+	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
+		s.Site.SetAbsoluteURL(jekyllURL)
+	} else {
+		s.Site.SetAbsoluteURL("")
+	}
 	fmt.Printf("done (%.2fs)\n", time.Since(start).Seconds())
 }
