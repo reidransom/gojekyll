@@ -17,6 +17,7 @@
 | documents.size    | {{ site.documents.size }}                                        |                      |
 | categories        | {{ site.categories }} {% for k in categories %}{{k}}{% endfor %} |                      |
 | tags              | {{ site.tags }}                                                  |                      |
+| url               | {{ site.url }}                                                   |                      |
 
 {% if false %}
 {% capture ks %}{% for k in site %}{{ k }} {% endfor %}{% endcapture %}
