@@ -251,8 +251,11 @@ func (c *Config) loadConfigFiles(dir string, configFiles string) error {
 	// Track config file names for display
 	configFileNames := []string{}
 	
+	// Merged YAML data
+	var mergedData map[string]interface{}
+	
 	// Load and merge config files in order
-	for i, configFile := range files {
+	for _, configFile := range files {
 		if configFile == "" {
 			continue
 		}
@@ -271,91 +274,33 @@ func (c *Config) loadConfigFiles(dir string, configFiles string) error {
 			return utils.WrapPathError(err, configPath)
 		}
 		
-		if i == 0 {
-			// First file: load normally
-			if err = Unmarshal(bytes, c); err != nil {
-				return utils.WrapPathError(err, configPath)
-			}
+		// Parse YAML into a map
+		var fileData map[string]interface{}
+		if err := yaml.Unmarshal(bytes, &fileData); err != nil {
+			return utils.WrapPathError(err, configPath)
+		}
+		
+		// Merge into accumulated data
+		if mergedData == nil {
+			mergedData = fileData
 		} else {
-			// Subsequent files: merge with existing config
-			// Create a temporary config to unmarshal into
-			tempConfig := &Config{}
-			if err = Unmarshal(bytes, tempConfig); err != nil {
-				return utils.WrapPathError(err, configPath)
-			}
-			
-			// Merge tempConfig into c
-			// The m map is the raw config data - merge that
-			for k, v := range tempConfig.m {
-				c.m[k] = v
-			}
-			
-			// Merge the MapSlice - update existing keys, add new ones
-			newKeys := make(map[interface{}]bool)
-			for _, item := range tempConfig.ms {
-				newKeys[item.Key] = true
-			}
-			
-			// Update existing items
-			for i := range c.ms {
-				if newKeys[c.ms[i].Key] {
-					// Find the new value
-					for _, newItem := range tempConfig.ms {
-						if newItem.Key == c.ms[i].Key {
-							c.ms[i].Value = newItem.Value
-							break
-						}
-					}
-				}
-			}
-			
-			// Add new items that weren't in c.ms
-			existingKeys := make(map[interface{}]bool)
-			for _, item := range c.ms {
-				existingKeys[item.Key] = true
-			}
-			for _, newItem := range tempConfig.ms {
-				if !existingKeys[newItem.Key] {
-					c.ms = append(c.ms, newItem)
-				}
-			}
-			
-			// Merge struct fields that were set in tempConfig
-			if tempConfig.Destination != "" {
-				c.Destination = tempConfig.Destination
-			}
-			if tempConfig.Host != "" {
-				c.Host = tempConfig.Host
-			}
-			if tempConfig.Port != 0 {
-				c.Port = tempConfig.Port
-			}
-			if tempConfig.AbsoluteURL != "" {
-				c.AbsoluteURL = tempConfig.AbsoluteURL
-			}
-			if tempConfig.BaseURL != "" {
-				c.BaseURL = tempConfig.BaseURL
-			}
-			if tempConfig.Permalink != "" {
-				c.Permalink = tempConfig.Permalink
-			}
-			if len(tempConfig.Include) > 0 {
-				c.Include = tempConfig.Include
-			}
-			if len(tempConfig.Exclude) > 0 {
-				c.Exclude = tempConfig.Exclude
-			}
-			if len(tempConfig.Collections) > 0 {
-				if c.Collections == nil {
-					c.Collections = make(map[string]map[string]interface{})
-				}
-				for k, v := range tempConfig.Collections {
-					c.Collections[k] = v
-				}
+			// Override with values from this file
+			for k, v := range fileData {
+				mergedData[k] = v
 			}
 		}
 		
 		configFileNames = append(configFileNames, configPath)
+	}
+	
+	// Convert merged data back to YAML and unmarshal into config
+	mergedBytes, err := yaml.Marshal(mergedData)
+	if err != nil {
+		return err
+	}
+	
+	if err = Unmarshal(mergedBytes, c); err != nil {
+		return err
 	}
 	
 	// Set the config file display string
