@@ -78,7 +78,11 @@ type Config struct {
 
 // FromDirectory updates the config from the config file in
 // the directory, if such a file exists.
-func (c *Config) FromDirectory(dir string, environment string, adminFile string) error {
+func (c *Config) FromDirectory(dir string, environment string, adminFile string, configFiles string) error {
+	// If explicit config files are specified, use those and skip admin file logic
+	if configFiles != "" {
+		return c.loadConfigFiles(dir, configFiles)
+	}
 	// Determine admin file path
 	var adminPath string
 	explicitAdminFile := adminFile != ""
@@ -219,6 +223,146 @@ func (c *Config) FromDirectory(dir string, environment string, adminFile string)
 			return utils.WrapPathError(err, path)
 		}
 		c.ConfigFile = path
+	}
+	c.Source = dir
+	
+	// Override URL from JEKYLL_URL environment variable if set
+	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
+		c.AbsoluteURL = jekyllURL
+		c.Set("url", jekyllURL)
+	}
+	
+	return nil
+}
+
+// loadConfigFiles loads one or more config files separated by commas.
+// Later files override earlier ones.
+func (c *Config) loadConfigFiles(dir string, configFiles string) error {
+	// Split by comma and trim whitespace
+	files := strings.Split(configFiles, ",")
+	for i, f := range files {
+		files[i] = strings.TrimSpace(f)
+	}
+	
+	if len(files) == 0 {
+		return nil
+	}
+	
+	// Track config file names for display
+	configFileNames := []string{}
+	
+	// Load and merge config files in order
+	for i, configFile := range files {
+		if configFile == "" {
+			continue
+		}
+		
+		// Determine full path
+		var configPath string
+		if filepath.IsAbs(configFile) {
+			configPath = configFile
+		} else {
+			configPath = filepath.Join(dir, configFile)
+		}
+		
+		// Read config file
+		bytes, err := os.ReadFile(configPath)
+		if err != nil {
+			return utils.WrapPathError(err, configPath)
+		}
+		
+		if i == 0 {
+			// First file: load normally
+			if err = Unmarshal(bytes, c); err != nil {
+				return utils.WrapPathError(err, configPath)
+			}
+		} else {
+			// Subsequent files: merge with existing config
+			// Create a temporary config to unmarshal into
+			tempConfig := &Config{}
+			if err = Unmarshal(bytes, tempConfig); err != nil {
+				return utils.WrapPathError(err, configPath)
+			}
+			
+			// Merge tempConfig into c
+			// The m map is the raw config data - merge that
+			for k, v := range tempConfig.m {
+				c.m[k] = v
+			}
+			
+			// Merge the MapSlice - update existing keys, add new ones
+			newKeys := make(map[interface{}]bool)
+			for _, item := range tempConfig.ms {
+				newKeys[item.Key] = true
+			}
+			
+			// Update existing items
+			for i := range c.ms {
+				if newKeys[c.ms[i].Key] {
+					// Find the new value
+					for _, newItem := range tempConfig.ms {
+						if newItem.Key == c.ms[i].Key {
+							c.ms[i].Value = newItem.Value
+							break
+						}
+					}
+				}
+			}
+			
+			// Add new items that weren't in c.ms
+			existingKeys := make(map[interface{}]bool)
+			for _, item := range c.ms {
+				existingKeys[item.Key] = true
+			}
+			for _, newItem := range tempConfig.ms {
+				if !existingKeys[newItem.Key] {
+					c.ms = append(c.ms, newItem)
+				}
+			}
+			
+			// Merge struct fields that were set in tempConfig
+			if tempConfig.Destination != "" {
+				c.Destination = tempConfig.Destination
+			}
+			if tempConfig.Host != "" {
+				c.Host = tempConfig.Host
+			}
+			if tempConfig.Port != 0 {
+				c.Port = tempConfig.Port
+			}
+			if tempConfig.AbsoluteURL != "" {
+				c.AbsoluteURL = tempConfig.AbsoluteURL
+			}
+			if tempConfig.BaseURL != "" {
+				c.BaseURL = tempConfig.BaseURL
+			}
+			if tempConfig.Permalink != "" {
+				c.Permalink = tempConfig.Permalink
+			}
+			if len(tempConfig.Include) > 0 {
+				c.Include = tempConfig.Include
+			}
+			if len(tempConfig.Exclude) > 0 {
+				c.Exclude = tempConfig.Exclude
+			}
+			if len(tempConfig.Collections) > 0 {
+				if c.Collections == nil {
+					c.Collections = make(map[string]map[string]interface{})
+				}
+				for k, v := range tempConfig.Collections {
+					c.Collections[k] = v
+				}
+			}
+		}
+		
+		configFileNames = append(configFileNames, configPath)
+	}
+	
+	// Set the config file display string
+	if len(configFileNames) == 1 {
+		c.ConfigFile = configFileNames[0]
+	} else {
+		c.ConfigFile = strings.Join(configFileNames, ", ")
 	}
 	c.Source = dir
 	

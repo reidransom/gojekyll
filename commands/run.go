@@ -29,6 +29,7 @@ func ParseAndRun(args []string) error {
 	}
 	options.Environment = environment
 	options.AdminFile = adminFile
+	options.ConfigFiles = configFiles
 	return run(cmd)
 }
 
