@@ -16,7 +16,7 @@ import (
 // FromDirectory reads the configuration file, if it exists.
 func FromDirectory(dir string, flags config.Flags) (*Site, error) {
 	s := New(flags)
-	if err := s.cfg.FromDirectory(dir, flags.Environment); err != nil {
+	if err := s.cfg.FromDirectory(dir, flags.Environment, flags.AdminFile); err != nil {
 		return nil, utils.WrapError(err, "reading site")
 	}
 	s.cfg.ApplyFlags(s.flags)

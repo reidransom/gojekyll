@@ -29,7 +29,7 @@ title: Test Site
 
 	// Load config
 	c := Default()
-	err = c.FromDirectory(tmpDir, "")
+	err = c.FromDirectory(tmpDir, "", "")
 	require.NoError(t, err)
 
 	// Check that AbsoluteURL field is overridden
@@ -69,7 +69,7 @@ func TestFromDirectory_JEKYLL_URL_Override_AdminYML(t *testing.T) {
 
 	// Load config with dev environment
 	c := Default()
-	err = c.FromDirectory(tmpDir, "dev")
+	err = c.FromDirectory(tmpDir, "dev", "")
 	require.NoError(t, err)
 
 	// Check that AbsoluteURL field is overridden
@@ -104,7 +104,7 @@ title: Test Site
 
 	// Load config
 	c := Default()
-	err = c.FromDirectory(tmpDir, "")
+	err = c.FromDirectory(tmpDir, "", "")
 	require.NoError(t, err)
 
 	// Check that AbsoluteURL field uses config value
@@ -135,7 +135,7 @@ func TestFromDirectory_AdminYML_PreservesDefaultConfig(t *testing.T) {
 
 	// Load config
 	c := Default()
-	err = c.FromDirectory(tmpDir, "")
+	err = c.FromDirectory(tmpDir, "", "")
 	require.NoError(t, err)
 
 	vars := c.Variables()

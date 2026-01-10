@@ -28,6 +28,7 @@ func ParseAndRun(args []string) error {
 		options.Verbose = &verbose
 	}
 	options.Environment = environment
+	options.AdminFile = adminFile
 	return run(cmd)
 }
 
