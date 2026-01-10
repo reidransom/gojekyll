@@ -18,6 +18,7 @@ type Flags struct {
 	DryRun, ForcePolling, Watch bool
 	Environment                 string
 	AdminFile                   string
+	ConfigFiles                 string
 }
 
 // ApplyFlags overwrites the configuration with values from flags.

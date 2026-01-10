@@ -12,6 +12,7 @@ var (
 	quiet       = false
 	environment = ""
 	adminFile   = ""
+	configFiles = ""
 )
 
 var (
@@ -31,6 +32,7 @@ func init() {
 	_ = app.Flag("verbose", "Print verbose output.").Short('V').Action(boolVar("verbose", &options.Verbose)).Bool()
 	app.Flag("env", "Environment to use from _admin.yml (e.g. prod, stg, dev). If omitted and _admin.yml exists, uses base config.").StringVar(&environment)
 	app.Flag("admin", "Path to admin configuration file (e.g. _admin.yml). When specified, does not fall back to _config.yml.").StringVar(&adminFile)
+	app.Flag("config", "Comma-separated list of configuration files (e.g. '_config.yml,_config.local.yml'). Later files override earlier ones.").StringVar(&configFiles)
 
 	// these flags are just present on build and serve, but I don't see a DRY way to say this
 	app.Flag("incremental", "Enable incremental rebuild.").Short('I').Action(boolVar("incremental", &options.Incremental)).Bool()

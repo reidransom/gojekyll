@@ -37,7 +37,7 @@ func TestFromDirectory_AdminYML(t *testing.T) {
 
 	// Test dev environment
 	c := Default()
-	err = c.FromDirectory(tmpDir, "dev", "")
+	err = c.FromDirectory(tmpDir, "dev", "", "")
 	require.NoError(t, err)
 	require.Contains(t, c.ConfigFile, "_admin.yml (env: dev)")
 	devFormAction, ok := c.String("form_action")
@@ -53,7 +53,7 @@ func TestFromDirectory_AdminYML(t *testing.T) {
 
 	// Test stg environment
 	c = Default()
-	err = c.FromDirectory(tmpDir, "stg", "")
+	err = c.FromDirectory(tmpDir, "stg", "", "")
 	require.NoError(t, err)
 	stgFormAction, ok := c.String("form_action")
 	require.True(t, ok)
@@ -61,7 +61,7 @@ func TestFromDirectory_AdminYML(t *testing.T) {
 
 	// Test prod environment (only has envid override)
 	c = Default()
-	err = c.FromDirectory(tmpDir, "prod", "")
+	err = c.FromDirectory(tmpDir, "prod", "", "")
 	require.NoError(t, err)
 	prodFormAction, ok := c.String("form_action")
 	require.True(t, ok)
@@ -93,7 +93,7 @@ func TestFromDirectory_AdminYML_NoEnv(t *testing.T) {
 
 	// When no environment is specified, should use _admin.yml base config if it exists
 	c := Default()
-	err = c.FromDirectory(tmpDir, "", "")
+	err = c.FromDirectory(tmpDir, "", "", "")
 	require.NoError(t, err)
 	require.Contains(t, c.ConfigFile, "_admin.yml (base)")
 	title, ok := c.String("title")
@@ -117,7 +117,7 @@ func TestFromDirectory_AdminYML_MissingBase(t *testing.T) {
 
 	// Should now fall back to _config.yml if base section is missing
 	c := Default()
-	err = c.FromDirectory(tmpDir, "prod", "")
+	err = c.FromDirectory(tmpDir, "prod", "", "")
 	require.NoError(t, err)
 }
 
@@ -147,7 +147,7 @@ url: https://config.example.com
 
 	// Load config with explicit admin file
 	c := Default()
-	err = c.FromDirectory(tmpDir, "", "custom_admin.yml")
+	err = c.FromDirectory(tmpDir, "", "custom_admin.yml", "")
 	require.NoError(t, err)
 
 	// Should use custom admin file, not _config.yml
@@ -168,7 +168,7 @@ func TestFromDirectory_ExplicitAdminFile_NotFound(t *testing.T) {
 
 	// Try to load with non-existent admin file
 	c := Default()
-	err = c.FromDirectory(tmpDir, "", "nonexistent.yml")
+	err = c.FromDirectory(tmpDir, "", "nonexistent.yml", "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "nonexistent.yml")
 }
@@ -197,7 +197,7 @@ func TestFromDirectory_ExplicitAdminFile_MissingBase(t *testing.T) {
 
 	// When explicitly specified, should fail if base is missing (no fallback)
 	c := Default()
-	err = c.FromDirectory(tmpDir, "", "custom.yml")
+	err = c.FromDirectory(tmpDir, "", "custom.yml", "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "site.base")
 }
