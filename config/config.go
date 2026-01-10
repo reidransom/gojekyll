@@ -79,6 +79,13 @@ type Config struct {
 // FromDirectory updates the config from the config file in
 // the directory, if such a file exists.
 func (c *Config) FromDirectory(dir string, environment string, adminFile string, configFiles string) error {
+	// Check JEKYLL_CONFIG environment variable if --config flag not provided
+	if configFiles == "" {
+		if jekyllConfig := os.Getenv("JEKYLL_CONFIG"); jekyllConfig != "" {
+			configFiles = jekyllConfig
+		}
+	}
+	
 	// If explicit config files are specified, use those and skip admin file logic
 	if configFiles != "" {
 		return c.loadConfigFiles(dir, configFiles)

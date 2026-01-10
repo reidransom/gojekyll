@@ -267,3 +267,82 @@ func TestFromDirectory_ConfigFlag_AbsolutePath(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "Absolute Path Config", title)
 }
+
+func TestFromDirectory_JEKYLL_CONFIG_EnvVar(t *testing.T) {
+	// Test JEKYLL_CONFIG environment variable
+	tmpDir, err := os.MkdirTemp("", "gojekyll-test-*")
+	require.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Create config files
+	baseYML := `title: Base
+port: 4000
+`
+	baseConfigPath := filepath.Join(tmpDir, "_config.yml")
+	err = os.WriteFile(baseConfigPath, []byte(baseYML), 0644)
+	require.NoError(t, err)
+
+	localYML := `title: Local Override
+custom: value
+`
+	localConfigPath := filepath.Join(tmpDir, "_config.local.yml")
+	err = os.WriteFile(localConfigPath, []byte(localYML), 0644)
+	require.NoError(t, err)
+
+	// Set JEKYLL_CONFIG environment variable
+	origConfig := os.Getenv("JEKYLL_CONFIG")
+	defer func() { _ = os.Setenv("JEKYLL_CONFIG", origConfig) }()
+	err = os.Setenv("JEKYLL_CONFIG", "_config.yml,_config.local.yml")
+	require.NoError(t, err)
+
+	// Load config without --config flag (should use JEKYLL_CONFIG)
+	c := Default()
+	err = c.FromDirectory(tmpDir, "", "", "")
+	require.NoError(t, err)
+
+	// Should merge both files
+	title, ok := c.String("title")
+	require.True(t, ok)
+	require.Equal(t, "Local Override", title)
+
+	port := c.Port
+	require.Equal(t, 4000, port)
+
+	custom, ok := c.String("custom")
+	require.True(t, ok)
+	require.Equal(t, "value", custom)
+}
+
+func TestFromDirectory_ConfigFlag_OverridesJEKYLL_CONFIG(t *testing.T) {
+	// Test that --config flag takes precedence over JEKYLL_CONFIG
+	tmpDir, err := os.MkdirTemp("", "gojekyll-test-*")
+	require.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Create config files
+	envYML := `title: From ENV`
+	envConfigPath := filepath.Join(tmpDir, "env_config.yml")
+	err = os.WriteFile(envConfigPath, []byte(envYML), 0644)
+	require.NoError(t, err)
+
+	flagYML := `title: From Flag`
+	flagConfigPath := filepath.Join(tmpDir, "flag_config.yml")
+	err = os.WriteFile(flagConfigPath, []byte(flagYML), 0644)
+	require.NoError(t, err)
+
+	// Set JEKYLL_CONFIG environment variable
+	origConfig := os.Getenv("JEKYLL_CONFIG")
+	defer func() { _ = os.Setenv("JEKYLL_CONFIG", origConfig) }()
+	err = os.Setenv("JEKYLL_CONFIG", "env_config.yml")
+	require.NoError(t, err)
+
+	// Load with --config flag (should override JEKYLL_CONFIG)
+	c := Default()
+	err = c.FromDirectory(tmpDir, "", "", "flag_config.yml")
+	require.NoError(t, err)
+
+	// Should use flag, not env var
+	title, ok := c.String("title")
+	require.True(t, ok)
+	require.Equal(t, "From Flag", title)
+}
