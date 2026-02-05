@@ -282,11 +282,12 @@ func whereFilter(array []map[string]interface{}, key string, value interface{}) 
 		return nil
 	}
 	var result []interface{}
+	valueStr := fmt.Sprint(value)
 	for i := 0; i < rt.Len(); i++ {
 		item := rt.Index(i)
 		if item.Kind() == reflect.Map && item.Type().Key().Kind() == reflect.String {
 			attr := item.MapIndex(reflect.ValueOf(key))
-			if attr.IsValid() && fmt.Sprint(attr) == value {
+			if attr.IsValid() && fmt.Sprint(attr.Interface()) == valueStr {
 				result = append(result, item.Interface())
 			}
 		}

@@ -167,6 +167,40 @@ func TestWhereExpFilter_objects(t *testing.T) {
 	requireTemplateRender(t, tmpl, data, "A")
 }
 
+func TestWhereFilter(t *testing.T) {
+	data := map[string]interface{}{
+		"movies": []map[string]interface{}{
+			{"title": "Alien", "genre": "horror", "year": 1979},
+			{"title": "Comedy Central", "genre": "comedy", "year": 2000},
+			{"title": "The Ring", "genre": "horror", "year": 2002},
+		},
+	}
+
+	// Test filtering by string value
+	t.Run("string value", func(t *testing.T) {
+		tmpl := `{% assign horror = movies | where: "genre", "horror" %}{% for m in horror %}{{ m.title }} {% endfor %}`
+		requireTemplateRender(t, tmpl, data, "Alien The Ring")
+	})
+
+	// Test filtering by integer value passed as string
+	t.Run("integer as string", func(t *testing.T) {
+		tmpl := `{% assign movies1979 = movies | where: "year", "1979" %}{% for m in movies1979 %}{{ m.title }}{% endfor %}`
+		requireTemplateRender(t, tmpl, data, "Alien")
+	})
+
+	// Test filtering by integer value
+	t.Run("integer value", func(t *testing.T) {
+		tmpl := `{% assign movies1979 = movies | where: "year", 1979 %}{% for m in movies1979 %}{{ m.title }}{% endfor %}`
+		requireTemplateRender(t, tmpl, data, "Alien")
+	})
+
+	// Test with no matches
+	t.Run("no matches", func(t *testing.T) {
+		tmpl := `{% assign scifi = movies | where: "genre", "scifi" %}{{ scifi | size }}`
+		requireTemplateRender(t, tmpl, data, "0")
+	})
+}
+
 func requireTemplateRender(t *testing.T, tmpl string, bindings liquid.Bindings, expected string) {
 	engine := liquid.NewEngine()
 	cfg := config.Default()
