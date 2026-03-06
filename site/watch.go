@@ -66,17 +66,42 @@ func (s *Site) makeEventWatcher() (<-chan string, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Watch the source directory and all subdirectories recursively.
+	// fsnotify.Watcher.Add only watches a single directory, so we walk
+	// the tree and add each directory individually.
+	err = filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			rel := utils.MustRel(sourceDir, path)
+			if rel != "." && s.Exclude(rel) {
+				return filepath.SkipDir
+			}
+			return w.Add(path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	go func() {
 		for {
 			select {
 			case event := <-w.Events:
+				// If a new directory is created, start watching it too
+				if event.Has(fsnotify.Create) {
+					if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+						_ = w.Add(event.Name)
+					}
+				}
 				filenames <- utils.MustRel(sourceDir, event.Name)
 			case err := <-w.Errors:
 				fmt.Fprintln(os.Stderr, "error:", err)
 			}
 		}
 	}()
-	return filenames, w.Add(sourceDir)
+	return filenames, nil
 }
 
 func (s *Site) makePollingWatcher() (<-chan string, error) {
