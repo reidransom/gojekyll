@@ -8,7 +8,6 @@ require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/bep/godartsass/v2 v2.5.0
-	github.com/danog/blackfriday/v2 v2.1.6
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/jaschaephraim/lrserver v0.0.0-20240306232639-afed386b3640
@@ -20,6 +19,7 @@ require (
 	github.com/radovskyb/watcher v1.0.7
 	github.com/stretchr/testify v1.10.0
 	github.com/tdewolff/minify v2.3.6+incompatible
+	github.com/yuin/goldmark v1.7.16
 	golang.org/x/net v0.40.0
 	golang.org/x/oauth2 v0.30.0
 	gopkg.in/yaml.v2 v2.4.0
