@@ -13,12 +13,15 @@ import (
 	"time"
 
 	sass "github.com/bep/godartsass/v2"
-	blackfriday "github.com/danog/blackfriday/v2"
 	"github.com/osteele/gojekyll/config"
 	"github.com/osteele/gojekyll/utils"
 	"github.com/osteele/liquid"
 	"github.com/osteele/liquid/evaluator"
 	"github.com/osteele/liquid/expressions"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	gmhtml "github.com/yuin/goldmark/renderer/html"
 )
 
 // AddJekyllFilters adds the Jekyll filters to the Liquid engine.
@@ -93,7 +96,7 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config) {
 		return c.BaseURL + s
 	})
 	e.RegisterFilter("jsonify", json.Marshal)
-	e.RegisterFilter("markdownify", blackfriday.Run)
+	e.RegisterFilter("markdownify", markdownify)
 	e.RegisterFilter("normalize_whitespace", func(s string) string {
 		// s = strings.Replace(s, "n", "N", -1)
 		wsPattern := regexp.MustCompile(`(?s:[\s\n]+)`)
@@ -320,6 +323,31 @@ func uniqFilter(array []interface{}) []interface{} {
 		}
 	}
 	return result
+}
+
+// markdownify converts markdown text to HTML using goldmark,
+// matching the same configuration as the main rendering pipeline.
+func markdownify(md []byte) ([]byte, error) {
+	engine := goldmark.New(
+		goldmark.WithExtensions(
+			extension.GFM,
+			extension.DefinitionList,
+			extension.Footnote,
+		),
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+			parser.WithAttribute(),
+		),
+		goldmark.WithRendererOptions(
+			gmhtml.WithXHTML(),
+			gmhtml.WithUnsafe(),
+		),
+	)
+	var buf bytes.Buffer
+	if err := engine.Convert(md, &buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // string filters

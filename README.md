@@ -127,7 +127,7 @@ Missing features:
 - Liquid filter `sassify` is not implemented
 - Liquid is run in strict mode: undefined filters and variables are errors.
 - Missing markdown features:
-  - [attribute lists](https://kramdown.gettalong.org/syntax.html#attribute-list-definitions)
+  - [attribute list definitions](https://kramdown.gettalong.org/syntax.html#attribute-list-definitions) (ALDs, i.e. `{:refname: .class}` reusable sets; inline attribute lists `{: .class #id}` on headings are supported)
   - [`markdown="span"`, `markdown="block"`](https://kramdown.gettalong.org/syntax.html#html-blocks)
   - Markdown configuration options
 
@@ -256,7 +256,7 @@ Gojekyll uses these libraries:
 | [github.com/osteele/liquid](https://github.com/osteele/liquid)                 | yours truly                                      | Liquid processor                                           | MIT License                             |
 | [github.com/pkg/browser](https://github.com/pkg/browser)                       | [pkg](https://github.com/pkg)                    | `serve --open-url` option                                  | BSD 2-clause "Simplified" License       |
 | [github.com/radovskyb/watcher](https://github.com/radovskyb/watcher)           | Benjamin Radovsky                                | Polling file watch (`--force_polling`)                     | BSD 3-clause "New" or "Revised" License |
-| [github.com/danog/blackfriday](https://github.com/danog/blackfriday)           | Russ Ross, Daniil Gentili                        | Markdown processing                                        | Simplified BSD License                  |
+| [github.com/yuin/goldmark](https://github.com/yuin/goldmark)                   | Yusuke Inuzuka                                   | Markdown processing (CommonMark + GFM + extensions)        | MIT License                             |
 | [github.com/sass/dart-sass](https://github.com/sass/dart-sass)                 | Listed [here](https://github.com/sass/dart-sass) | The reference implementation of Sass, written in Dart.     | MIT License                             |
 | [github.com/tdewolff/minify](https://github.com/tdewolff/minify)               | Taco de Wolff                                    | CSS minimization                                           | MIT License                             |
 | [github.com/bep/godartsass](https://github.com/bep/godartsass)                 | Drew Wells                                       | Go API backed by the native Dart Sass Embedded executable. | MIT License                             |

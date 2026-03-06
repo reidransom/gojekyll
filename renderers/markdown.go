@@ -5,62 +5,58 @@ import (
 	"io"
 	"regexp"
 
-	blackfriday "github.com/danog/blackfriday/v2"
 	"github.com/osteele/gojekyll/utils"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	gmhtml "github.com/yuin/goldmark/renderer/html"
 	"golang.org/x/net/html"
 )
 
-const blackfridayFlags = 0 |
-	blackfriday.UseXHTML |
-	blackfriday.Smartypants |
-	blackfriday.SmartypantsFractions |
-	blackfriday.SmartypantsDashes |
-	blackfriday.SmartypantsLatexDashes |
-	blackfriday.FootnoteReturnLinks
+// goldmarkEngine is a shared goldmark instance configured with extensions
+// matching Jekyll's kramdown+GFM behavior.
+var goldmarkEngine = goldmark.New(
+	goldmark.WithExtensions(
+		extension.GFM,            // tables, strikethrough, autolinks, task lists
+		extension.DefinitionList, // definition lists
+		extension.Footnote,       // footnotes
+	),
+	goldmark.WithParserOptions(
+		parser.WithAutoHeadingID(), // auto-generate heading IDs
+		parser.WithAttribute(),     // support {#id .class key="value"} on headings
+	),
+	goldmark.WithRendererOptions(
+		gmhtml.WithXHTML(),   // self-closing tags like <br />
+		gmhtml.WithUnsafe(),  // allow raw HTML passthrough
+	),
+)
 
-const blackfridayExtensions = 0 |
-	blackfriday.NoIntraEmphasis |
-	blackfriday.Tables |
-	blackfriday.FencedCode |
-	blackfriday.Autolink |
-	blackfriday.Strikethrough |
-	blackfriday.SpaceHeadings |
-	blackfriday.HeadingIDs |
-	blackfriday.BackslashLineBreak |
-	blackfriday.DefinitionLists |
-	blackfriday.NoEmptyLineBeforeBlock |
-	// added relative to commonExtensions
-	blackfriday.AutoHeadingIDs |
-	blackfriday.Footnotes
+// goldmarkConvert renders markdown to HTML using the shared goldmark engine.
+func goldmarkConvert(md []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := goldmarkEngine.Convert(md, &buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
 
 func renderMarkdown(md []byte) ([]byte, error) {
-	params := blackfriday.HTMLRendererParameters{
-		Flags: blackfridayFlags,
-	}
-	renderer := blackfriday.NewHTMLRenderer(params)
-	html := blackfriday.Run(
-		md,
-		blackfriday.WithRenderer(renderer),
-		blackfriday.WithExtensions(blackfridayExtensions),
-	)
-	html, err := renderInnerMarkdown(html)
+	// Preprocess kramdown-style IALs to Pandoc-style for goldmark
+	md = preprocessIAL(md)
+	out, err := goldmarkConvert(md)
 	if err != nil {
 		return nil, utils.WrapError(err, "markdown")
 	}
-	return html, nil
+	out, err = renderInnerMarkdown(out)
+	if err != nil {
+		return nil, utils.WrapError(err, "markdown")
+	}
+	return out, nil
 }
 
 func _renderMarkdown(md []byte) ([]byte, error) {
-	params := blackfriday.HTMLRendererParameters{
-		Flags: blackfridayFlags,
-	}
-	renderer := blackfriday.NewHTMLRenderer(params)
-	html := blackfriday.Run(
-		md,
-		blackfriday.WithRenderer(renderer),
-		blackfriday.WithExtensions(blackfridayExtensions),
-	)
-	return html, nil
+	md = preprocessIAL(md)
+	return goldmarkConvert(md)
 }
 
 // search HTML for markdown=1, and process if found
@@ -135,6 +131,11 @@ loop:
 		tt := z.Next()
 		switch tt {
 		case html.ErrorToken:
+			if z.Err() == io.EOF {
+				// End of document reached before matching end tag;
+				// render whatever content we collected.
+				break loop
+			}
 			return z.Err()
 		case html.StartTagToken:
 			if !notATagRE.Match(z.Raw()) {
