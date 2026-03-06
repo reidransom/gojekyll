@@ -38,6 +38,11 @@ func (s *Site) Read() error {
 	if err := s.readThemeAssets(); err != nil {
 		return utils.WrapError(err, "reading theme assets")
 	}
+	// Exclude the destination directory from source reading, matching Ruby Jekyll behavior.
+	// Without this, rebuilds can read prior output files as source documents.
+	if destRel, err := filepath.Rel(s.SourceDir(), s.DestDir()); err == nil && destRel != "." && !strings.HasPrefix(destRel, "..") {
+		s.cfg.Exclude = append(s.cfg.Exclude, destRel)
+	}
 	if err := s.readFiles(s.SourceDir(), s.SourceDir()); err != nil {
 		return utils.WrapError(err, "reading files")
 	}
