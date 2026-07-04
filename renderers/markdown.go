@@ -34,7 +34,19 @@ var goldmarkEngine = goldmark.New(
 					if ok {
 						_, _ = w.WriteString(`<div class="language-` + string(lang) + ` highlighter-rouge"><div class="highlight">`)
 					}
+					// When chroma has no lexer for the fence language (e.g. `liquid`)
+					// or the fence is unlabeled, goldmark-highlighting takes its
+					// fallback path and writes the raw code with no <pre><code> of
+					// its own — so emit one here to match rouge's output for
+					// unknown languages. Without this the code renders as
+					// whitespace-collapsed inline text.
+					if !c.Highlighted() {
+						_, _ = w.WriteString(`<pre class="highlight"><code>`)
+					}
 				} else {
+					if !c.Highlighted() {
+						_, _ = w.WriteString("</code></pre>")
+					}
 					if ok {
 						_, _ = w.WriteString("</div></div>")
 					}
