@@ -149,6 +149,9 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config) {
 		}
 		return buf.String()
 	})
+
+	// money (Shopify-style); prices are an integer number of cents
+	newMoneyFormatter(c).register(e.RegisterFilter)
 }
 
 // helpers
