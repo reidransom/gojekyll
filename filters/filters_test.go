@@ -82,6 +82,18 @@ var filterTests = []struct{ in, expected string }{
 	{`{{ "foo, bar; baz?" | cgi_escape }}`, "foo%2C+bar%3B+baz%3F"},
 	{`{{ "1 < 2 & 3" | xml_escape }}`, "1 &lt; 2 &amp; 3"},
 
+	// money (Shopify-style); prices are an integer number of cents
+	{`{{ 1000 | money }}`, "$10.00"},
+	{`{{ 1000 | money_with_currency }}`, "$10.00 USD"},
+	{`{{ 1000 | money_without_currency }}`, "10.00"},
+	{`{{ 1000 | money_without_trailing_zeros }}`, "$10"},
+	{`{{ 1099 | money_without_trailing_zeros }}`, "$10.99"},
+	{`{{ 123456 | money }}`, "$1,234.56"},
+	{`{{ 100000000 | money_with_currency }}`, "$1,000,000.00 USD"},
+	{`{{ "2500" | money }}`, "$25.00"},
+	{`{{ product.price | money }}`, "$19.99"},
+	{`{{ nil | money }}`, ""},
+
 	// Jekyll produces the first. I believe the second is acceptable.
 	// {`{{ "http://foo.com/?q=foo, \bar?" | uri_escape }}`, "http://foo.com/?q=foo,%20%5Cbar?"},
 	{`{{ "http://foo.com/?q=foo, \bar?" | uri_escape }}`, "http://foo.com/?q=foo%2C+%5Cbar%3F"},
@@ -95,6 +107,9 @@ var filterTestBindings = liquid.Bindings{
 	},
 	"page": map[string]interface{}{
 		"tags": []string{"Seattle", "Tacoma"},
+	},
+	"product": map[string]interface{}{
+		"price": 1999,
 	},
 	"site": map[string]interface{}{
 		"members": []map[string]interface{}{
