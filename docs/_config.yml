@@ -1,5 +1,0 @@
-theme: jekyll-theme-minimal
-
-gems:
-  - jekyll-github-metadata
-  - jekyll-optional-front-matter
