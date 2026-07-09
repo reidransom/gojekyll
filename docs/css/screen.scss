@@ -55,6 +55,35 @@ article th, article td { border: 1px solid $border; padding: .5rem .7rem; text-a
 article blockquote { border-left: 3px solid $accent; margin: 1rem 0; padding: .25rem 1rem; color: $muted; }
 .improve-doc { float: right; font-size: .8rem; color: $muted; }
 
+// Compatibility system (callouts + badges), color-coded by status
+$compat-modified: #b45309;    // amber — behavior differs in places
+$compat-replaced: #1d4ed8;    // blue — whole topic works differently
+$compat-unsupported: #b91c1c; // red — Jekyll has it, jigyll doesn't
+$compat-jigyll-only: #15803d; // green — jigyll addition
+
+.compat-callout {
+  border: 1px solid;
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  margin: 1rem 0 1.5rem;
+  font-size: .95em;
+  p { margin: .25rem 0; }
+  &.compat-modified { border-color: $compat-modified; background: #fef3c7; }
+  &.compat-replaced { border-color: $compat-replaced; background: #dbeafe; }
+  &.compat-unsupported { border-color: $compat-unsupported; background: #fee2e2; }
+  &.compat-jigyll-only { border-color: $compat-jigyll-only; background: #dcfce7; }
+}
+.compat-callout-label { font-weight: 700; }
+.compat-modified .compat-glyph, .compat-modified.compat-badge { color: $compat-modified; }
+.compat-replaced .compat-glyph, .compat-replaced.compat-badge { color: $compat-replaced; }
+.compat-unsupported .compat-glyph, .compat-unsupported.compat-badge { color: $compat-unsupported; }
+.compat-jigyll-only .compat-glyph, .compat-jigyll-only.compat-badge { color: $compat-jigyll-only; }
+.compat-callout-details { font-size: .85em; }
+
+.docs-nav .compat-badge { font-size: .7em; vertical-align: middle; }
+.docs-nav li.current .compat-badge { color: #fff; }
+
 // Landing
 .hero { text-align: center; padding: 4rem 1rem; }
 .hero h1 { font-size: 2.6rem; margin-bottom: .5rem; }

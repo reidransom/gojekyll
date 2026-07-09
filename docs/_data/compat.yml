@@ -1,0 +1,42 @@
+# Compatibility metadata — the single source of truth for how each docs page
+# differs from Ruby Jekyll. Keyed by the page's slug (its file basename, or an
+# explicit `compat_key` in the page's front matter).
+#
+# Feeds three surfaces:
+#   1. the per-page callout   (_includes/compat_callout.html, via _layouts/docs.html)
+#   2. the sidebar badge      (_includes/docs_contents.html)
+#   3. the aggregate page     (_docs/differences.md)
+#
+# status vocabulary:
+#   same        — behavior matches Jekyll; no callout (default; omit the entry)
+#   modified    — mostly the same, with specific differences
+#   replaced    — the whole topic works differently in jigyll
+#   unsupported — Jekyll has it, jigyll doesn't
+#   jigyll-only — jigyll adds something Jekyll lacks
+
+index:
+  status: modified
+  summary: "Jigyll is a partially-compatible clone of Jekyll written in Go.
+            Most Jekyll concepts carry over, but not every feature is
+            implemented — pages that differ are flagged like this one."
+  details: /docs/differences/
+
+installation:
+  status: replaced
+  summary: "Jigyll ships as a single Go binary — install via Homebrew, Scoop,
+            Docker, or the install script, not RubyGems/Bundler. There is no
+            Ruby toolchain to set up."
+  details: /docs/differences/#replaced
+
+usage:
+  status: replaced
+  summary: "The CLI provides `build`, `serve`, `clean`, and `help` only — no
+            `new`, `doctor`, or `import`. `serve` renders in memory (nothing is
+            written to disk) and live reload is always on."
+  details: /docs/differences/#replaced
+
+differences:
+  status: jigyll-only
+  summary: "This page has no Ruby Jekyll counterpart — it aggregates every
+            known divergence from the compatibility metadata that powers these
+            callouts."

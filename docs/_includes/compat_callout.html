@@ -1,0 +1,23 @@
+{%- comment -%}
+  Per-page compatibility callout. Reads _data/compat.yml keyed by the page's
+  slug (or a `compat_key` front-matter override). Pages with no entry — or an
+  explicit `status: same` — render nothing. Injected once in _layouts/docs.html.
+{%- endcomment -%}
+{%- assign compat_key = page.compat_key | default: page.slug -%}
+{%- assign compat = site.data.compat[compat_key] -%}
+{%- if compat and compat.status != "same" -%}
+<div class="compat-callout compat-{{ compat.status }}">
+  <p class="compat-callout-label">
+    {%- case compat.status -%}
+      {%- when "modified" -%}<span class="compat-glyph">●</span> Differs from Ruby Jekyll — <em>modified</em>
+      {%- when "replaced" -%}<span class="compat-glyph">◆</span> Differs from Ruby Jekyll — <em>replaced</em>
+      {%- when "unsupported" -%}<span class="compat-glyph">✕</span> Not supported in Jigyll
+      {%- when "jigyll-only" -%}<span class="compat-glyph">＋</span> Jigyll-only — not in Ruby Jekyll
+    {%- endcase -%}
+  </p>
+  {{ compat.summary | markdownify }}
+  {%- if compat.details and compat.details != page.url %}
+  <p class="compat-callout-details"><a href="{{ compat.details | relative_url }}">All differences →</a></p>
+  {%- endif %}
+</div>
+{%- endif -%}

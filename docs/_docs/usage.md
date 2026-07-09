@@ -40,7 +40,3 @@ Builds the site and serves it locally, rebuilding on change.
 | `--port` | Port (default `4000`) |
 | `--open-uri`, `-o` | Open the site in a browser |
 | `--watch` | Watch for changes (on by default) |
-
-> **Differs from Jekyll.** `serve` renders pages on the fly and does **not**
-> write to the filesystem, and **live reload is always on**. Commands Jekyll
-> has but Jigyll does not include `new`, `doctor`, and `import`.
