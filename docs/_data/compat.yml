@@ -50,6 +50,72 @@ rendering-process:
             smart quotes, and kramdown's TOC, math, and ALDs are not supported.
             Sass files skip Liquid entirely."
 
+posts:
+  status: modified
+  summary: "Categories and tags come only from front matter — the singular
+            `category:`/`tag:` keys and directory-based categories are
+            ignored. Drafts need a date-prefixed filename, `--future` keys
+            off the filename date, and `excerpt_separator` is global-only."
+
+front-matter:
+  status: modified
+  summary: "Malformed YAML always fails the build (`strict_front_matter` is
+            ignored), and files without front matter are copied as static
+            files unless the `jekyll-optional-front-matter` plugin is on.
+            Defaults scopes match by path prefix, and `type: pages` never
+            matches."
+
+collections:
+  status: modified
+  summary: "`collections_dir` and custom sorting (`sort_by`, `order`) are not
+            supported — collection folders live at the source root, and only
+            `posts` is sorted (by date). Everything else works like Jekyll."
+
+datafiles:
+  status: modified
+  summary: "Only top-level `.yml`/`.yaml`/`.json`/`.csv` files in `_data` are
+            read — no TSV and no subfolders. CSV parses into rows of strings,
+            not header-keyed maps."
+
+assets:
+  status: modified
+  summary: "Sass is always on but Liquid is not processed inside Sass files,
+            output is always minified, and only the `sass_dir` option is
+            honored. CoffeeScript is not supported."
+
+static-files:
+  status: modified
+  summary: "Front-matter `defaults` never apply to static files — only the
+            five built-in metadata fields are available, so filter on `path`
+            instead of custom flags."
+
+structure:
+  status: modified
+  summary: "No `.jekyll-cache`, `.sass-cache`, or `.jekyll-metadata` — the
+            build cache lives in `jigyll-$USER` under the system temp dir,
+            and `jigyll serve` renders in memory without writing `_site`."
+
+variables:
+  status: modified
+  summary: "`jekyll.version` reports the Jigyll version, `page.dir` and the
+            `theme.*` variables don't exist, `page.next`/`previous` are
+            posts-only, and `site.related_posts` is simply the ten most
+            recent posts."
+
+permalinks:
+  status: modified
+  summary: "The global `permalink:` style applies to posts only, unknown
+            placeholders are build errors, and several date placeholders
+            (`:i_month`, `:week`, weekday names) plus the `weekdate` style
+            are missing. Custom front-matter keys work as placeholders."
+
+themes:
+  status: modified
+  summary: "Themes are resolved from a local `_theme/<name>` folder, or via
+            Bundler (`bundle show`) as a fallback — `remote_theme` is not
+            supported, and theme `_data`, theme config, and `theme.*`
+            variables are ignored."
+
 liquid:
   status: modified
   summary: "Undefined filters and tags are build errors; undefined variables

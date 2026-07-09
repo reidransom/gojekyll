@@ -12,10 +12,38 @@
       link: /docs/configuration/
     - title: Rendering Process
       link: /docs/rendering-process/
+- title: Content
+  docs:
+    - title: Pages
+      link: /docs/pages/
+    - title: Posts
+      link: /docs/posts/
+    - title: Front Matter
+      link: /docs/front-matter/
+    - title: Collections
+      link: /docs/collections/
+    - title: Data Files
+      link: /docs/datafiles/
+    - title: Assets
+      link: /docs/assets/
+    - title: Static Files
+      link: /docs/static-files/
 - title: Site Structure
   docs:
+    - title: Directory Structure
+      link: /docs/structure/
     - title: Liquid
       link: /docs/liquid/
+    - title: Variables
+      link: /docs/variables/
+    - title: Includes
+      link: /docs/includes/
+    - title: Layouts
+      link: /docs/layouts/
+    - title: Permalinks
+      link: /docs/permalinks/
+    - title: Themes
+      link: /docs/themes/
     - title: Pagination
       link: /docs/pagination/
 - title: Guides
