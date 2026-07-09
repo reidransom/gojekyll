@@ -1,0 +1,85 @@
+---
+title: Rendering Process
+permalink: /docs/rendering-process/
+description: How Jigyll renders a page, and how its goldmark Markdown differs from kramdown.
+---
+
+Like Jekyll, Jigyll renders each file in stages, with the output of one stage
+feeding the next:
+
+1. **Front matter** is read and stripped from the file.
+2. **Liquid** expressions in the body are evaluated.
+3. **Converters** run, based on the file's extension — Markdown becomes HTML,
+   Sass/SCSS becomes CSS. Markdown inside a `.html` file remains untouched.
+4. **Layouts** wrap the result: the `layout` from the page's front matter is
+   rendered around the content, and each layout's own `layout:` key chains to
+   its parent, Russian-doll style. Layout bodies are processed as Liquid only,
+   never as Markdown.
+
+Files without front matter are copied verbatim as static files (unless the
+[jekyll-optional-front-matter plugin](/docs/plugins/) is enabled).
+
+> **Differs from Jekyll.** Sass/SCSS files skip the Liquid stage entirely —
+> the body after front matter goes straight to the Sass compiler. In Jekyll, a
+> Sass file is a page like any other and may contain Liquid.
+
+## Markdown: goldmark, not kramdown
+
+Markdown is rendered by [goldmark](https://github.com/yuin/goldmark), a
+CommonMark engine, with GitHub Flavored Markdown extensions — tables,
+strikethrough, autolinks, task lists — plus definition lists and footnotes.
+The renderer is **not configurable**: `markdown:` and `kramdown:` settings in
+`_config.yml` are ignored.
+
+Most Markdown renders identically. The differences that matter:
+
+- **Raw `<` and `>` are treated as HTML.** `This is <b>bold</b>` renders as
+  bold text. This matches the Markdown spec but differs from kramdown's
+  default escaping.
+- **No smart quotes.** kramdown typographically curls quotes by default;
+  goldmark leaves them straight. (The `smartify` Liquid filter is available
+  when you want that.)
+- **Math is not supported.** `$...$` and `$$...$$` pass through as literal
+  text.
+- **No table of contents.** kramdown's TOC marker is not expanded. Use a
+  Liquid loop or hand-written links instead.
+
+## Header IDs
+
+Headings get auto-generated `id` attributes, but the algorithm differs from
+kramdown's:
+
+- Punctuation becomes a **hyphen**, not the empty string: `## Either/or`
+  gets `#either-or` (kramdown: `#eitheror`); `## I'm Lucky` gets `#i-m-lucky`
+  (kramdown: `#im-lucky`).
+- HTML inside a heading is ignored when computing the ID — only the text
+  counts.
+- Non-ASCII characters are dropped, not transliterated.
+- Duplicate IDs get `-1`, `-2`, … suffixes.
+
+You can always set an explicit ID with an inline attribute list:
+<code>## My Heading {&#58; #my-id}</code>.
+
+## Inline attribute lists
+
+kramdown-style inline attribute lists (IALs) on headings —
+<code>{&#58; .class #id key="value"}</code> — are supported; they are
+rewritten to goldmark's attribute syntax before parsing.
+
+> **Differs from Jekyll.** The IAL rewrite is a plain text substitution over
+> the whole file, so a literal <code>{&#58; ...}</code> inside a code span or
+> code block is also rewritten (the colon disappears). Not supported at all:
+> **attribute list definitions** (ALDs, reusable
+> <code>{&#58;refname: ...}</code> sets) and
+> `markdown="span"` / `markdown="block"` on HTML elements —
+> `markdown="1"` works.
+
+## Syntax highlighting
+
+Fenced code blocks and the `{% raw %}{% highlight %}{% endraw %}` tag are
+highlighted by [chroma](https://github.com/alecthomas/chroma), emitting
+**Rouge-compatible CSS classes** — your existing Pygments/Rouge stylesheet
+works unchanged. The `linenos` argument to
+`{% raw %}{% highlight %}{% endraw %}` adds line numbers; fenced code blocks
+don't support line numbers. Code fences with an unrecognized language are
+wrapped in plain `<pre><code>`.

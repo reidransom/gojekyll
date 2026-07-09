@@ -43,28 +43,3 @@ Jigyll additions with no Jekyll counterpart.
 {{ trimmed }}
 {% endunless %}
 {% endfor %}
-
-## Not yet tied to a docs page
-
-These differences are real today but their reference pages haven't been ported
-yet; each will get its own compatibility entry as the docs grow.
-
-- **Strict Liquid.** Undefined variables and filters are errors, not silent
-  blanks.
-- **Strict configuration.** A wrong type in `_config.yml` (a list where a
-  string is expected, etc.) is generally an error.
-- **Markdown** is rendered by goldmark, not kramdown. Raw `<` / `>` is treated
-  as HTML, auto-generated header IDs replace punctuation with hyphens, and
-  kramdown extensions — <code>{&#58;toc}</code>, attribute lists, math — are
-  not expanded.
-- **Plugins** are listed in `_config.yml`, not a `Gemfile`, and there is no
-  extensible plugin system — only plugins compiled into the binary are
-  available. [Some plugins](https://github.com/reidransom/jigyll/blob/main/docs/plugins.md)
-  are emulated.
-- **Pagination** (`jekyll-paginate`) is not implemented.
-- The `sassify` Liquid filter (indented Sass) is unimplemented; `scssify`
-  works.
-- Caches live in `/tmp/jigyll-$USER`, not `./.sass-cache`.
-- **Shopify-style money filters** — `money`, `money_with_currency`,
-  `money_without_currency`, and `money_without_trailing_zeros` — are a
-  Jigyll-only addition.

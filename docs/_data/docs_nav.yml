@@ -4,9 +4,27 @@
       link: /docs/
     - title: Installation
       link: /docs/installation/
-- title: Reference
+- title: Build
   docs:
     - title: Usage
       link: /docs/usage/
+    - title: Configuration
+      link: /docs/configuration/
+    - title: Rendering Process
+      link: /docs/rendering-process/
+- title: Site Structure
+  docs:
+    - title: Liquid
+      link: /docs/liquid/
+    - title: Pagination
+      link: /docs/pagination/
+- title: Guides
+  docs:
+    - title: Plugins
+      link: /docs/plugins/
+    - title: Upgrading
+      link: /docs/upgrading/
+- title: Reference
+  docs:
     - title: Differences from Jekyll
       link: /docs/differences/

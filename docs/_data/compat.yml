@@ -30,9 +30,50 @@ installation:
 
 usage:
   status: replaced
-  summary: "The CLI provides `build`, `serve`, `clean`, and `help` only — no
-            `new`, `doctor`, or `import`. `serve` renders in memory (nothing is
-            written to disk) and live reload is always on."
+  summary: "No `new`, `doctor`, or `import` commands, but extra ones Jekyll
+            lacks: `plugins`, `render`, `routes`, `variables`, and `benchmark`.
+            `serve` renders in memory (nothing is written to disk) and live
+            reload is always on."
+  details: /docs/differences/#replaced
+
+configuration:
+  status: modified
+  summary: "A wrong YAML type for a supported key is a build error. `markdown:`,
+            `kramdown:`, `liquid:`, and most `sass:` options are ignored — those
+            behaviors are fixed. Front-matter defaults match by path prefix, not
+            glob. Caches live in `/tmp/jigyll-$USER`, not `./.sass-cache`."
+
+rendering-process:
+  status: modified
+  summary: "Markdown is rendered by goldmark, not kramdown: raw `<`/`>` is
+            treated as HTML, header IDs are generated differently, there are no
+            smart quotes, and kramdown's TOC, math, and ALDs are not supported.
+            Sass files skip Liquid entirely."
+
+liquid:
+  status: modified
+  summary: "Undefined filters and tags are build errors; undefined variables
+            render as empty. `sassify`, `find`, and `find_exp` are missing.
+            Jigyll adds Shopify-style money filters (`money`,
+            `money_with_currency`, …) that Jekyll doesn't have."
+
+pagination:
+  status: unsupported
+  summary: "Pagination is not implemented. `paginate` and `paginate_path` are
+            ignored; the `jekyll-paginate` plugin name is recognized but only
+            exposes a stub `paginator` so themes don't crash."
+
+plugins:
+  status: replaced
+  summary: "There is no extensible plugin system — plugins are Go code compiled
+            into the binary. A fixed set of popular plugins is emulated; list
+            them in `_config.yml` under `plugins:`, not a Gemfile."
+
+upgrading:
+  status: replaced
+  summary: "Upgrades come through your package manager (Homebrew, Scoop,
+            Docker, the install script, or `go install`) — there is no Bundler
+            or `gem update`."
   details: /docs/differences/#replaced
 
 differences:
