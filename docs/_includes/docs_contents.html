@@ -1,0 +1,14 @@
+<div class="unit one-fifth hide-on-mobiles">
+  <aside class="docs-nav">
+    {% for section in site.data.docs_nav %}
+      <h4>{{ section.title }}</h4>
+      <ul>
+        {%- for item in section.docs -%}
+          <li{% if item.link == page.url %} class="current"{% endif %}>
+            <a href="{{ item.link | relative_url }}">{{ item.title }}</a>
+          </li>
+        {%- endfor -%}
+      </ul>
+    {% endfor %}
+  </aside>
+</div>

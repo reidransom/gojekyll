@@ -1,0 +1,12 @@
+- title: Getting Started
+  docs:
+    - title: Overview
+      link: /docs/
+    - title: Installation
+      link: /docs/installation/
+- title: Reference
+  docs:
+    - title: Usage
+      link: /docs/usage/
+    - title: Differences from Jekyll
+      link: /docs/differences/

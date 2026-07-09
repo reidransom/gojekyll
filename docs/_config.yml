@@ -1,0 +1,22 @@
+title: Jigyll
+description: A fast, partially-compatible Jekyll clone written in Go.
+url: https://jigyll.r2ware.app
+baseurl: ""
+repository: https://github.com/reidransom/jigyll
+
+collections:
+  docs:
+    output: true
+    permalink: /docs/:path/
+
+defaults:
+  - scope:
+      path: "_docs"
+      type: docs
+    values:
+      layout: docs
+
+# Existing engineering notes — folded in as real pages in a later phase.
+exclude:
+  - benchmarks.md
+  - plugins.md

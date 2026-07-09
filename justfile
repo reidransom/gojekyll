@@ -18,6 +18,14 @@ build:
     go mod tidy
     go build -ldflags "{{_ldflags}}" -o {{binary}} {{package}}
 
+# serve the documentation site (docs/) with live reload
+docs: build
+    ./{{binary}} serve -s docs
+
+# build the documentation site (docs/) into docs/_site
+docs-build: build
+    ./{{binary}} build -s docs
+
 # cross-compile for linux (amd64 + arm64)
 buildlinux:
     mkdir -p dist
