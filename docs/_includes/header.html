@@ -1,6 +1,12 @@
 <header class="site-header">
   <div class="grid">
     <a class="site-title" href="{{ '/' | relative_url }}">Jigyll</a>
+    <div class="search hide-on-mobiles">
+      <input type="search" id="docs-search-input" placeholder="Search the docs…"
+             aria-label="Search the docs" autocomplete="off"
+             data-index="{{ '/search-data.json' | relative_url }}">
+      <ul id="docs-search-results" hidden></ul>
+    </div>
     <nav class="site-nav">
       <a href="{{ '/docs/' | relative_url }}">Docs</a>
       <a href="{{ '/docs/differences/' | relative_url }}">vs&nbsp;Jekyll</a>

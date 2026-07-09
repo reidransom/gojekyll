@@ -56,3 +56,5 @@
   docs:
     - title: Differences from Jekyll
       link: /docs/differences/
+    - title: Benchmarks
+      link: /docs/benchmarks/

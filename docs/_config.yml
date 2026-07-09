@@ -15,8 +15,3 @@ defaults:
       type: docs
     values:
       layout: docs
-
-# Existing engineering notes — folded in as real pages in a later phase.
-exclude:
-  - benchmarks.md
-  - plugins.md

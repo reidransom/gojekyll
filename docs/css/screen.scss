@@ -31,6 +31,50 @@ a:hover { text-decoration: underline; }
 .site-title::before { content: "{ }"; color: $accent; margin-right: .4rem; }
 .site-nav a { margin-left: 1.25rem; color: $muted; font-weight: 600; }
 
+// Search
+.search {
+  position: relative;
+  margin-left: auto;
+  input {
+    font: inherit;
+    font-size: .9rem;
+    color: $ink;
+    background: #fff;
+    border: 1px solid $border;
+    border-radius: 6px;
+    padding: .35rem .7rem;
+    width: 220px;
+    &:focus { outline: none; border-color: $accent; }
+  }
+  ul {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 360px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid $border;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+    list-style: none;
+    margin: 0;
+    padding: .25rem;
+    z-index: 10;
+  }
+  li a {
+    display: block;
+    padding: .45rem .6rem;
+    border-radius: 4px;
+    color: $ink;
+    &:hover { text-decoration: none; }
+  }
+  li:hover a, li.selected a { background: $bg-code; }
+  .search-result-title { display: block; font-weight: 600; }
+  li small { color: $muted; font-size: .78rem; }
+}
+.site-nav { margin-left: 1.25rem; }
+
 // Docs layout
 .docs .grid { display: flex; gap: 2.5rem; align-items: flex-start; padding-top: 2rem; padding-bottom: 4rem; }
 .unit.four-fifths { flex: 1 1 auto; min-width: 0; order: 2; }
