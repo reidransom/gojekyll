@@ -23,5 +23,15 @@
         {%- endfor -%}
       </ul>
     {% endfor %}
+    <div class="compat-legend">
+      <h4>vs Jekyll</h4>
+      <ul>
+        <li><span class="compat-badge compat-modified">●</span> modified</li>
+        <li><span class="compat-badge compat-replaced">◆</span> replaced</li>
+        <li><span class="compat-badge compat-unsupported">✕</span> not supported</li>
+        <li><span class="compat-badge compat-jigyll-only">＋</span> Jigyll-only</li>
+      </ul>
+      <a href="{{ "/docs/differences/" | relative_url }}">All differences →</a>
+    </div>
   </aside>
 </div>

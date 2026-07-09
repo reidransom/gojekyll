@@ -84,6 +84,19 @@ $compat-jigyll-only: #15803d; // green — jigyll addition
 .docs-nav .compat-badge { font-size: .7em; vertical-align: middle; }
 .docs-nav li.current .compat-badge { color: #fff; }
 
+.compat-legend {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid $border;
+  font-size: .8rem;
+  color: $muted;
+  h4 { margin: 0 0 .5rem; }
+  ul { list-style: none; margin: 0 0 .5rem; padding: 0; }
+  li { margin: .15rem 0; padding: 0 .5rem; }
+  .compat-badge { font-size: .8em; vertical-align: middle; margin-right: .25rem; }
+  a { display: block; padding: 0 .5rem; font-size: .95em; }
+}
+
 // Landing
 .hero { text-align: center; padding: 4rem 1rem; }
 .hero h1 { font-size: 2.6rem; margin-bottom: .5rem; }
