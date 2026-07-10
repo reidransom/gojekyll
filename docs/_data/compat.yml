@@ -73,9 +73,9 @@ collections:
 
 datafiles:
   status: modified
-  summary: "Only top-level `.yml`/`.yaml`/`.json`/`.csv` files in `_data` are
-            read — no TSV and no subfolders. CSV parses into rows of strings,
-            not header-keyed maps."
+  summary: "Reads `.yml`/`.yaml`/`.json`/`.csv` files in `_data`, including
+            namespaced subfolders — but no TSV. CSV parses into rows of
+            strings, not header-keyed maps."
 
 assets:
   status: modified

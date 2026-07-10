@@ -16,15 +16,15 @@ site-specific options without changing `_config.yml`.
 
 > **Differs from Jekyll.** Jigyll reads **YAML** (`.yml`, `.yaml`), **JSON**
 > (`.json`), and **CSV** (`.csv`) files. Jekyll additionally supports TSV;
-> Jigyll does not. And two more caveats:
+> Jigyll does not. One more caveat:
 >
 > - **CSV files parse into rows of strings** (`site.data.members[0][1]`),
 >   not header-keyed maps — Jekyll's header-row convention
 >   (`member.name`) does not apply. The `csv_reader`/`tsv_reader` config
 >   options are not supported.
-> - **Subfolders of `_data` are not read.** Jekyll namespaces
->   `_data/orgs/jekyll.yml` as `site.data.orgs.jekyll`; Jigyll only loads
->   files at the top level of `_data`. Keep the directory flat.
+
+Subdirectories of `_data` are namespaced by folder name, just as in Jekyll:
+`_data/orgs/jekyll.yml` is available as `site.data.orgs.jekyll`.
 
 ## Example: list of members
 

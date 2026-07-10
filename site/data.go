@@ -10,32 +10,46 @@ import (
 )
 
 func (s *Site) readDataFiles() error {
-	s.data = map[string]interface{}{}
 	dataDir := filepath.Join(s.SourceDir(), s.cfg.DataDir)
-	files, err := os.ReadDir(dataDir)
+	data, err := readDataDir(dataDir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
 		return err
 	}
+	s.data = data
+	return nil
+}
+
+// readDataDir reads a data directory, recursing into subdirectories and
+// namespacing their contents under the directory name, as Jekyll does
+// (_data/orgs/jekyll.yml -> site.data.orgs.jekyll).
+func readDataDir(dir string) (map[string]interface{}, error) {
+	data := map[string]interface{}{}
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return data, nil
+		}
+		return nil, err
+	}
 	for _, f := range files {
+		filename := filepath.Join(dir, f.Name())
 		if f.IsDir() {
-			break
+			sub, err := readDataDir(filename)
+			if err != nil {
+				return nil, err
+			}
+			data[f.Name()] = sub
+			continue
 		}
-		var (
-			filename  = filepath.Join(dataDir, f.Name())
-			basename  = utils.TrimExt(filepath.Base(f.Name()))
-			data, err = readDataFile(filename)
-		)
+		d, err := readDataFile(filename)
 		if err != nil {
-			return utils.WrapPathError(err, filename)
+			return nil, utils.WrapPathError(err, filename)
 		}
-		if data != nil {
-			s.data[basename] = data
+		if d != nil {
+			data[utils.TrimExt(f.Name())] = d
 		}
 	}
-	return nil
+	return data, nil
 }
 
 func readDataFile(filename string) (interface{}, error) {
