@@ -82,9 +82,9 @@ func TestExpandPermalinkPattern(t *testing.T) {
 	dateTests := []pathTest{
 		{"base", "date", fmt.Sprintf("/a/b/%04d/%02d/%02d/base.html", localDate.Year(), localDate.Month(), localDate.Day())},
 		{"base", "pretty", fmt.Sprintf("/a/b/%04d/%02d/%02d/base/", localDate.Year(), localDate.Month(), localDate.Day())},
-		// For ordinal, we need to use the actual value that will be used in the code
-		// The code uses p.modTime.YearDay() directly, not the local date's year day
-		{"base", "ordinal", fmt.Sprintf("/a/b/%04d/%d/base.html", testDate.Year(), testDate.YearDay())},
+		// :y_day comes from the post date (here the modTime fallback),
+		// zero-padded to three digits like Jekyll (001..366)
+		{"base", "ordinal", fmt.Sprintf("/a/b/%04d/%03d/base.html", localDate.Year(), localDate.YearDay())},
 		// Jekyll's :i_month spelling, and the legacy :imonth alias
 		{"base", "/:year/:i_month/:i_day/:title", fmt.Sprintf("/%04d/%d/%d/base", localDate.Year(), localDate.Month(), localDate.Day())},
 		{"base", "/:year/:imonth/:title", fmt.Sprintf("/%04d/%d/base", localDate.Year(), localDate.Month())},
@@ -99,6 +99,13 @@ func TestExpandPermalinkPattern(t *testing.T) {
 	s = siteFake{t, config.Default()}
 	d["collection"] = "c"
 	runTests(collectionTests)
+
+	t.Run("y_day from post date, not file mtime", func(t *testing.T) {
+		postDate := time.Date(2015, 2, 3, 12, 0, 0, 0, time.Local) // year day 34
+		p, err := testPermalinkPattern("/:year/:y_day/:title", "base", map[string]interface{}{"date": postDate})
+		require.NoError(t, err)
+		require.Equal(t, "/2015/034/base", p)
+	})
 
 	t.Run("invalid template variable", func(t *testing.T) {
 		p, err := testPermalinkPattern("/:invalid", "/a/b/base.html", d)

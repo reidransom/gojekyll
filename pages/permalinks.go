@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -56,7 +55,7 @@ func (p *page) permalinkVariables() map[string]string {
 		"path":       "/" + root, // TODO are we removing and then adding this?
 		"slug":       slug,
 		"title":      utils.Slugify(p.fm.String("title", name)),
-		"y_day":      strconv.Itoa(p.modTime.YearDay()),
+		"y_day":      fmt.Sprintf("%03d", date.YearDay()),
 		// Undocumented but evident:
 		"output_ext": p.OutputExt(),
 	}

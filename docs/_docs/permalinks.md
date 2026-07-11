@@ -54,6 +54,7 @@ The placeholders Jigyll implements:
 | `:i_month` | Month without leading zeros. |
 | `:day` | Day of the month from the post's filename (01..31). |
 | `:i_day` | Day of the month without leading zeros. |
+| `:y_day` | Ordinal day of the year, with leading zeros (001..366). |
 | `:hour`, `:minute`, `:second` | Time of day from the post's `date` front matter, zero-padded. |
 | `:title` | Title from the document's front matter (or filename), slugified. |
 | `:slug` | Slugified title from the document's filename. May be overridden via the document's `slug` front matter. |
@@ -70,10 +71,8 @@ in their front matter. That's a Jigyll extension.
 > **Differs from Jekyll.** An unknown placeholder is a **build error**
 > (Jekyll leaves it in the URL). Not implemented: `:short_month`,
 > `:long_month`, `:week`, `:w_year`, `:w_day`, `:short_day`, `:long_day`,
-> and `:slugified_categories`. `:y_day` exists but is currently derived
-> from the file's modification time rather than the post date, so avoid
-> relying on it. `:title` is always slugified (lowercased) — Jekyll
-> preserves the case of the source filename.
+> and `:slugified_categories`. `:title` is always slugified (lowercased) —
+> Jekyll preserves the case of the source filename.
 
 ### Built-in formats
 
