@@ -62,8 +62,7 @@ front-matter:
   summary: "Malformed YAML always fails the build (`strict_front_matter` is
             ignored), and files without front matter are copied as static
             files unless the `jekyll-optional-front-matter` plugin is on.
-            Defaults scopes match by path prefix, and `type: pages` never
-            matches."
+            Defaults scopes match by path prefix, not glob."
 
 collections:
   status: modified

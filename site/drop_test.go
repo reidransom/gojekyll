@@ -52,6 +52,26 @@ func TestSite_ToLiquid_posts(t *testing.T) {
 	require.Len(t, posts, 1)
 }
 
+// The test config scopes a default to `type: pages`; it must reach regular
+// pages and nothing else.
+func TestSite_FrontMatterDefaults_pagesType(t *testing.T) {
+	site, err := FromDirectory("testdata/site1", config.Flags{})
+	require.NoError(t, err)
+	require.NoError(t, site.Read())
+
+	nonCollection := 0
+	for _, p := range site.Pages() {
+		fm := p.FrontMatter()
+		if fm["collection"] == nil {
+			nonCollection++
+			require.Equal(t, "set", fm["pagedefault"], "a `type: pages` default must apply to %s", p.URL())
+		} else {
+			require.Nil(t, fm["pagedefault"], "a `type: pages` default must not apply to %s", p.URL())
+		}
+	}
+	require.NotZero(t, nonCollection)
+}
+
 func TestSite_ToLiquid_categories(t *testing.T) {
 	drop := readTestSiteDrop(t)
 	categories, ok := drop["categories"].(map[string][]Page)

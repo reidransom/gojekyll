@@ -81,7 +81,6 @@ over, define [defaults](/docs/configuration/) for them in `_config.yml` and
 only override them where necessary. This works both for predefined and
 custom variables.
 
-> **Differs from Jekyll.** Defaults scopes have two limitations: `path` is
-> matched as a plain prefix (no globs), and `type` only matches `posts` or a
-> collection name — `type: pages` never matches regular pages. See
+> **Differs from Jekyll.** Defaults scopes have one limitation: `path` is
+> matched as a plain prefix (no globs). See
 > [Configuration](/docs/configuration/).

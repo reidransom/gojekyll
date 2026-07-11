@@ -3,3 +3,9 @@ collections:
     output: true
   coll2:
     output: false
+defaults:
+  - scope:
+      path: ""
+      type: pages
+    values:
+      pagedefault: set

@@ -96,7 +96,10 @@ func (s *Site) readFiles(dir, base string) error {
 		case strings.HasPrefix(rel, "_") && !s.isIncludedPath(rel):
 			return nil
 		}
-		defaultFrontmatter := s.cfg.GetFrontMatterDefaults("", rel)
+		// Non-collection pages have type "pages" in Jekyll's defaults scope
+		// vocabulary (static files pass through here too, but they ignore
+		// front matter defaults entirely).
+		defaultFrontmatter := s.cfg.GetFrontMatterDefaults("pages", rel)
 		d, err := pages.NewFile(s, filename, filepath.ToSlash(rel), defaultFrontmatter)
 		if err != nil {
 			return utils.WrapPathError(err, filename)
