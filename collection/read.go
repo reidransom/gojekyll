@@ -12,11 +12,11 @@ import (
 // ReadPages scans the file system for collection pages, and adds them to c.Pages.
 func (c *Collection) ReadPages() error {
 	if c.IsPostsCollection() && c.cfg.Drafts {
-		if err := c.scanDirectory(draftsPath); err != nil {
+		if err := c.scanDirectory(draftsPath, draftsStrategy{}); err != nil {
 			return err
 		}
 	}
-	if err := c.scanDirectory(c.PathPrefix()); err != nil {
+	if err := c.scanDirectory(c.PathPrefix(), c.strategy()); err != nil {
 		return err
 	}
 	if c.IsPostsCollection() {
@@ -45,7 +45,7 @@ func addPrevNext(ps []Page) {
 // scanDirectory scans the file system for collection pages, and adds them to c.Pages.
 //
 // This function is distinct from ReadPages so that the posts collection can call it twice.
-func (c *Collection) scanDirectory(dirname string) error {
+func (c *Collection) scanDirectory(dirname string, strategy collectionStrategy) error {
 	sitePath := c.cfg.Source
 	dir := filepath.Join(sitePath, dirname)
 	return filepath.Walk(dir, func(filename string, info os.FileInfo, err error) error {
@@ -62,14 +62,13 @@ func (c *Collection) scanDirectory(dirname string) error {
 		case c.site.Exclude(siteRel):
 			return nil
 		default:
-			return c.readPost(filename, utils.MustRel(dir, filename))
+			return c.readPost(filename, utils.MustRel(dir, filename), strategy)
 		}
 	})
 }
 
-func (c *Collection) readPost(path string, rel string) error {
+func (c *Collection) readPost(path string, rel string, strategy collectionStrategy) error {
 	siteRel := utils.MustRel(c.cfg.Source, path)
-	strategy := c.strategy()
 	switch {
 	case !strategy.isCollectible(rel):
 		return nil

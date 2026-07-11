@@ -140,10 +140,10 @@ an `excerpt` key in the post's front matter.
 
 Drafts are posts you're still working on and don't want to publish yet. Put
 them in a `_drafts` folder in your site's root, and preview them by running
-`jigyll serve` or `jigyll build` with the `--drafts` switch.
+`jigyll serve` or `jigyll build` with the `--drafts` switch. Draft filenames
+don't need a date prefix (`_drafts/a-draft-post.md`); a dateless draft takes
+its file's last-modified time as its date, just like Jekyll.
 
-> **Differs from Jekyll.** Draft filenames **must include the
-> `YEAR-MONTH-DAY-` date prefix**, just like posts — Jekyll's dateless
-> drafts (`_drafts/a-draft-post.md`) are silently skipped. Relatedly, the
-> `--future` switch and `future:` setting decide "future-ness" from the
-> filename date, not a `date:` in front matter.
+> **Differs from Jekyll.** The `--future` switch and `future:` setting
+> decide "future-ness" from the filename date, not a `date:` in front
+> matter.

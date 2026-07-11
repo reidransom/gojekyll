@@ -54,8 +54,8 @@ posts:
   status: modified
   summary: "Categories and tags come only from front matter — the singular
             `category:`/`tag:` keys and directory-based categories are
-            ignored. Drafts need a date-prefixed filename, `--future` keys
-            off the filename date, and `excerpt_separator` is global-only."
+            ignored. `--future` keys off the filename date, and
+            `excerpt_separator` is global-only."
 
 front-matter:
   status: modified

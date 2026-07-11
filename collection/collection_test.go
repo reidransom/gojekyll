@@ -61,3 +61,20 @@ func Test_ReadPages(t *testing.T) {
 	require.Equal(t, pages[0], pages[1].FrontMatter()["previous"])
 	require.Equal(t, nil, pages[1].FrontMatter()["next"])
 }
+
+func Test_ReadPages_drafts(t *testing.T) {
+	site := siteFake{config.FromString("source: testdata\nshow_drafts: true")}
+	c := New(site, "posts", map[string]interface{}{})
+	require.NoError(t, c.ReadPages())
+	// birthday post + dated draft + dateless draft
+	require.Len(t, c.Pages(), 3)
+
+	var dateless Page
+	for _, p := range c.Pages() {
+		if p.FrontMatter()["title"] == "Dateless Draft" {
+			dateless = p
+		}
+	}
+	require.NotNil(t, dateless, "a draft without a filename date must still be read")
+	require.False(t, dateless.PostDate().IsZero(), "a dateless draft dates from its file mtime")
+}

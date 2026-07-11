@@ -1,6 +1,7 @@
 package collection
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/reidransom/jigyll/config"
@@ -52,6 +53,25 @@ func (s postsStrategy) isFuture(filename string) bool {
 	t, _, ok := utils.ParseFilenameDateTitle(filename)
 	return ok && t.After(time.Now())
 }
+
+// draftsStrategy reads the _drafts directory. Unlike posts, drafts don't
+// require a date-prefixed filename; a dateless draft falls back to its file
+// modification time for a date (Jekyll behavior, via Page.PostDate).
+type draftsStrategy struct{ postsStrategy }
+
+func (s draftsStrategy) parseFilename(filename string, fm map[string]interface{}) {
+	if t, title, found := utils.ParseFilenameDateTitle(filename); found {
+		fm["date"] = t
+		fm["title"] = title
+		fm["slug"] = utils.Slugify(title)
+		return
+	}
+	base := utils.TrimExt(filepath.Base(filename))
+	fm["title"] = utils.Titleize(base)
+	fm["slug"] = utils.Slugify(base)
+}
+
+func (s draftsStrategy) isCollectible(string) bool { return true }
 
 // DefaultCollectionPermalinkPattern is the default permalink pattern for pages in the posts collection
 const DefaultCollectionPermalinkPattern = "/:collection/:path:output_ext"

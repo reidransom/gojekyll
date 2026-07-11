@@ -12,8 +12,8 @@ A basic Jigyll site usually looks something like this:
 ├── _data
 │   └── members.yml
 ├── _drafts
-│   ├── 2026-07-01-begin-with-the-crazy-ideas.md
-│   └── 2026-07-03-on-simplicity-in-technology.md
+│   ├── begin-with-the-crazy-ideas.md
+│   └── on-simplicity-in-technology.md
 ├── _includes
 │   ├── footer.html
 │   └── header.html
@@ -34,9 +34,7 @@ A basic Jigyll site usually looks something like this:
 > `.jekyll-metadata` is ever created in your project. Jigyll's build cache
 > lives outside the source tree, in `jigyll-$USER` under the system temp
 > directory (`$TMPDIR` on macOS, `/tmp` on Linux). Set the
-> `JIGYLL_DISABLE_CACHE` environment variable to turn it off. Note the draft
-> filenames above carry date prefixes — [Jigyll requires
-> them](/docs/posts/#drafts), unlike Jekyll.
+> `JIGYLL_DISABLE_CACHE` environment variable to turn it off.
 
 An overview of what each of these does:
 
