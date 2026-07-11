@@ -26,7 +26,8 @@ var PermalinkStyles = map[string]string{
 // to time.Format layout strings
 var permalinkDateVariables = map[string]string{
 	"month":      "01",
-	"imonth":     "1",
+	"i_month":    "1",
+	"imonth":     "1", // legacy misspelling of Jekyll's :i_month, kept for existing sites
 	"day":        "02",
 	"i_day":      "2",
 	"hour":       "15",

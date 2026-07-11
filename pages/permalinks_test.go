@@ -85,6 +85,9 @@ func TestExpandPermalinkPattern(t *testing.T) {
 		// For ordinal, we need to use the actual value that will be used in the code
 		// The code uses p.modTime.YearDay() directly, not the local date's year day
 		{"base", "ordinal", fmt.Sprintf("/a/b/%04d/%d/base.html", testDate.Year(), testDate.YearDay())},
+		// Jekyll's :i_month spelling, and the legacy :imonth alias
+		{"base", "/:year/:i_month/:i_day/:title", fmt.Sprintf("/%04d/%d/%d/base", localDate.Year(), localDate.Month(), localDate.Day())},
+		{"base", "/:year/:imonth/:title", fmt.Sprintf("/%04d/%d/base", localDate.Year(), localDate.Month())},
 	}
 
 	// Run the non-date-dependent tests
