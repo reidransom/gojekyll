@@ -97,10 +97,11 @@ the `tags` and `categories` keys. Each accepts either a YAML list or a
 space-separated string (`tags: classic hollywood` becomes the two tags
 `classic` and `hollywood`).
 
-All categories registered in the current site are exposed to Liquid via
-`site.categories.CATEGORY`, which yields the list of posts in that category.
-Categories can also be [incorporated into the post's URL](/docs/permalinks/)
-via the `:categories` placeholder; tags cannot be.
+All categories and tags registered in the current site are exposed to Liquid
+via `site.categories.CATEGORY` and `site.tags.TAG`, each of which yields the
+list of posts in that category or tag. Categories can also be
+[incorporated into the post's URL](/docs/permalinks/) via the `:categories`
+placeholder; tags cannot be.
 
 > **Differs from Jekyll.** Categories and tags come **only from front
 > matter**:
@@ -110,9 +111,6 @@ via the `:categories` placeholder; tags cannot be.
 > - Directory-based categories are not supported. In Jekyll, a post at
 >   `movies/horror/_posts/...` gets `movies` and `horror` as categories;
 >   in Jigyll it doesn't.
-> - `site.tags.TAG` is currently unreliable (a known issue causes it to
->   group by category) — group posts by tag yourself with the `group_by`
->   filter if you need a tag index.
 
 ## Post excerpts
 

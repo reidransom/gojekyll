@@ -25,21 +25,17 @@ func (s *Site) setPostVariables() {
 	if len(related) > 10 {
 		related = related[:10]
 	}
-	s.drop["categories"] = s.groupPagesBy(func(p Page) []string { return p.Categories() })
-	s.drop["tags"] = s.groupPagesBy(func(p Page) []string { return p.Tags() })
+	s.drop["categories"] = groupPagesBy(ps, func(p Page) []string { return p.Categories() })
+	s.drop["tags"] = groupPagesBy(ps, func(p Page) []string { return p.Tags() })
 	s.drop["related_posts"] = related
 }
 
-func (s *Site) groupPagesBy(getter func(Page) []string) map[string][]Page {
-	categories := map[string][]Page{}
-	for _, p := range s.Pages() {
-		for _, k := range p.Categories() {
-			ps, found := categories[k]
-			if !found {
-				ps = []Page{}
-			}
-			categories[k] = append(ps, p)
+func groupPagesBy(ps []Page, getter func(Page) []string) map[string][]Page {
+	groups := map[string][]Page{}
+	for _, p := range ps {
+		for _, k := range getter(p) {
+			groups[k] = append(groups[k], p)
 		}
 	}
-	return categories
+	return groups
 }

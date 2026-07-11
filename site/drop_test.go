@@ -52,6 +52,23 @@ func TestSite_ToLiquid_posts(t *testing.T) {
 	require.Len(t, posts, 1)
 }
 
+func TestSite_ToLiquid_categories(t *testing.T) {
+	drop := readTestSiteDrop(t)
+	categories, ok := drop["categories"].(map[string][]Page)
+	require.True(t, ok, fmt.Sprintf("categories has type %T", drop["categories"]))
+	require.Len(t, categories, 1)
+	require.Len(t, categories["cat1"], 1)
+}
+
+func TestSite_ToLiquid_tags(t *testing.T) {
+	drop := readTestSiteDrop(t)
+	tags, ok := drop["tags"].(map[string][]Page)
+	require.True(t, ok, fmt.Sprintf("tags has type %T", drop["tags"]))
+	require.Len(t, tags["tag1"], 1, "site.tags must group posts by tag, not category")
+	require.NotContains(t, tags, "cat1", "site.tags must not contain categories")
+	require.NotContains(t, tags, "pagetag", "site.tags must only include posts, not regular pages")
+}
+
 func TestSite_ToLiquid_related_posts(t *testing.T) {
 	drop := readTestSiteDrop(t)
 	posts, ok := drop["related_posts"].([]Page)

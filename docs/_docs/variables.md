@@ -38,7 +38,7 @@ these files, Jigyll makes a variety of data available via
 | `site.data` | The data loaded from the files in the `_data` directory. |
 | `site.documents` | A list of all the documents in every collection. |
 | `site.categories.CATEGORY` | The list of all posts in category `CATEGORY`. |
-| `site.tags.TAG` | The list of all posts with tag `TAG`. Currently unreliable — see [Posts](/docs/posts/#tags-and-categories). |
+| `site.tags.TAG` | The list of all posts with tag `TAG`. |
 | `site.url` | The url of your site as configured in `_config.yml` (or the `JEKYLL_URL` environment variable). |
 | `site.[CONFIGURATION_DATA]` | All the variables set in your `_config.yml` are available through the `site` variable. For example, if you have `foo: bar` in your configuration file, then it will be accessible in Liquid as `site.foo`. |
 
