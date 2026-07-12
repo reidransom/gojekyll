@@ -39,16 +39,19 @@ usage:
 configuration:
   status: modified
   summary: "A wrong YAML type for a supported key is a build error. `markdown:`,
-            `kramdown:`, `liquid:`, and most `sass:` options are ignored — those
-            behaviors are fixed. Front-matter defaults match by path prefix, not
-            glob. Caches live in `/tmp/jigyll-$USER`, not `./.sass-cache`."
+            `liquid:`, and most `sass:` and `kramdown:` options are ignored —
+            only kramdown's `toc_levels` is honored. Front-matter defaults match
+            by path prefix, not glob. Caches live in `/tmp/jigyll-$USER`, not
+            `./.sass-cache`."
 
 rendering-process:
   status: modified
   summary: "Markdown is rendered by goldmark, not kramdown: raw `<`/`>` is
-            treated as HTML, header IDs are generated differently, there are no
-            smart quotes, and kramdown's TOC, math, and ALDs are not supported.
-            Sass files skip Liquid entirely."
+            treated as HTML, header IDs are generated differently, and there
+            are no smart quotes. Kramdown's `{:toc}`, `$$` math (passed through
+            for MathJax/KaTeX), heading attribute lists, and `markdown=\"1\"`
+            blocks are supported; standalone ALDs are not. Sass files skip
+            Liquid entirely."
 
 posts:
   status: modified
@@ -118,9 +121,9 @@ themes:
 liquid:
   status: modified
   summary: "Undefined filters and tags are build errors; undefined variables
-            render as empty. `sassify`, `find`, and `find_exp` are missing.
-            Jigyll adds Shopify-style money filters (`money`,
-            `money_with_currency`, …) that Jekyll doesn't have."
+            render as empty. `find` and `find_exp` are missing. Jigyll adds
+            Shopify-style money filters (`money`, `money_with_currency`, …)
+            that Jekyll doesn't have."
 
 pagination:
   status: unsupported
