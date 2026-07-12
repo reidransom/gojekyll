@@ -71,13 +71,14 @@ func (c *Collection) Pages() []Page {
 
 // Render renders the collection's pages.
 func (c *Collection) Render() error {
+	var errs []error
 	for _, p := range c.Pages() {
 		err := p.Render()
 		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return utils.CombineErrors(errs)
 }
 
 // ToLiquid returns the value of the collection in the template
