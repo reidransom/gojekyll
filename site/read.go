@@ -1,6 +1,7 @@
 package site
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -92,10 +93,21 @@ func (s *Site) readFiles(dir, base string) error {
 		case info.IsDir():
 			return nil
 		case s.Exclude(rel):
+			s.diag.FilesFound++
+			s.diag.FilesExcluded++
+			if s.cfg.Verbose {
+				fmt.Printf("skip (excluded): %s\n", rel)
+			}
 			return nil
 		case strings.HasPrefix(rel, "_") && !s.isIncludedPath(rel):
+			s.diag.FilesFound++
+			s.diag.FilesUnderscored++
+			if s.cfg.Verbose {
+				fmt.Printf("skip (underscore): %s\n", rel)
+			}
 			return nil
 		}
+		s.diag.FilesFound++
 		// Non-collection pages have type "pages" in Jekyll's defaults scope
 		// vocabulary (static files pass through here too, but they ignore
 		// front matter defaults entirely).
@@ -103,6 +115,12 @@ func (s *Site) readFiles(dir, base string) error {
 		d, err := pages.NewFile(s, filename, filepath.ToSlash(rel), defaultFrontmatter)
 		if err != nil {
 			return utils.WrapPathError(err, filename)
+		}
+		if d.IsStatic() {
+			s.diag.FilesStaticNoFM++
+			if s.cfg.Verbose {
+				fmt.Printf("skip (no frontmatter → static file): %s\n", rel)
+			}
 		}
 		s.AddDocument(d, true)
 		if p, ok := d.(Page); ok {
@@ -125,6 +143,11 @@ func (s *Site) AddDocument(d Document, output bool) {
 		s.docs = append(s.docs, d)
 		if output {
 			s.Routes[d.URL()] = d
+		}
+	} else {
+		s.diag.FilesUnpublished++
+		if s.cfg.Verbose {
+			fmt.Printf("skip (unpublished): %s\n", d.Source())
 		}
 	}
 }
