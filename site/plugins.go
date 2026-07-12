@@ -23,6 +23,13 @@ func (s *Site) HasRoute(url string) bool {
 	return found
 }
 
+// AddPage is in the plugins.Site interface. It registers a plugin-created
+// page so that it is rendered, routed, and listed in site.pages.
+func (s *Site) AddPage(p Page) {
+	s.AddDocument(p, true)
+	s.nonCollectionPages = append(s.nonCollectionPages, p)
+}
+
 // AddHTMLPage is in the plugins.Site interface.
 func (s *Site) AddHTMLPage(url string, src string, fm pages.FrontMatter) {
 	tpl, err := s.TemplateEngine().ParseTemplate([]byte(src))

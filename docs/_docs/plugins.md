@@ -36,7 +36,7 @@ the source of truth for how completely each is implemented.
 | [jekyll-live-reload][jekyll-live-reload] | core | ✓ | always enabled (by design); no way to disable |
 | [jekyll-mentions][jekyll-mentions] | GitHub Pages | ✓ | |
 | [jekyll-optional-front-matter][jekyll-optional-front-matter] | GitHub Pages | ✓ | |
-| [jekyll-paginate][jekyll-paginate] | core | ✗ | recognized so builds don't fail; exposes a stub `paginator` only — see [Pagination](/docs/pagination/) |
+| [jekyll-paginate][jekyll-paginate] | core | ✓ | jekyll-paginate-v2 features; page URLs are directory-normalized (`/page2/`) — see [Pagination](/docs/pagination/) |
 | [jekyll-readme-index][jekyll-readme-index] | GitHub Pages | ✓ | |
 | [jekyll-redirect-from][jekyll-redirect-from] | GitHub Pages | ✓ | user template |
 | [jekyll-relative-links][jekyll-relative-links] | GitHub Pages | ✓ | |

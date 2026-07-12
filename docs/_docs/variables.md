@@ -18,10 +18,10 @@ these files, Jigyll makes a variety of data available via
 | `layout` | Layout-specific information + the front matter. Custom variables set via front matter in [layouts](/docs/layouts/) will be available here. |
 | `jekyll` | Version and environment information. See below for details. |
 | `content` | In layout files, the rendered content of the post or page being wrapped. Not defined in post or page files. |
-| `paginator` | A non-functional stub — [pagination](/docs/pagination/) is not implemented. |
+| `paginator` | The [pagination](/docs/pagination/) state, on paginated index pages. |
 
 > **Differs from Jekyll.** The `theme` variable (gemspec metadata of the
-> active theme gem, Jekyll 4.3+) does not exist, and `paginator` is a stub.
+> active theme gem, Jekyll 4.3+) does not exist.
 
 ## Site Variables
 

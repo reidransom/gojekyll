@@ -50,10 +50,12 @@ type Config struct {
 	BaseURL     string
 
 	// Outputting
-	Permalink string
-	Timezone  string
-	Verbose   bool
-	Defaults  []struct {
+	Permalink    string
+	Paginate     int    `yaml:"paginate"`
+	PaginatePath string `yaml:"paginate_path"`
+	Timezone     string
+	Verbose      bool
+	Defaults     []struct {
 		Scope struct {
 			Path string
 			Type string

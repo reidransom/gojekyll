@@ -142,7 +142,6 @@ regenerate documents whose sources (or included templates/layouts) changed.
 
 ## Unsupported keys
 
-`paginate` and `paginate_path` are ignored — [pagination](/docs/pagination/)
-is not implemented. `safe`, `whitelist`, `highlighter`, `lsi`, `limit_posts`,
+`safe`, `whitelist`, `highlighter`, `lsi`, `limit_posts`,
 and `profile` have no effect. Plugins are configured with `plugins:` (the
 legacy `gems:` alias also works) — never a Gemfile.

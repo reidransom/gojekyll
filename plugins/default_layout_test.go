@@ -18,6 +18,7 @@ type mockSite struct {
 }
 
 func (m *mockSite) AddHTMLPage(url string, tpl string, fm pages.FrontMatter) {}
+func (m *mockSite) AddPage(Page)                                             {}
 func (m *mockSite) Config() *config.Config {
 	if m.cfg == nil {
 		m.cfg = &config.Config{}

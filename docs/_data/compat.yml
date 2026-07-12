@@ -126,10 +126,12 @@ liquid:
             that Jekyll doesn't have."
 
 pagination:
-  status: unsupported
-  summary: "Pagination is not implemented. `paginate` and `paginate_path` are
-            ignored; the `jekyll-paginate` plugin name is recognized but only
-            exposes a stub `paginator` so themes don't crash."
+  status: modified
+  summary: "jekyll-paginate (v1) is implemented: `paginate` and
+            `paginate_path` split the posts list across copies of the
+            `index.html` they point at. Page URLs are directory-normalized
+            (`/page2/`, not `/page2`), and jekyll-paginate-v2 features
+            (`pagination:` block, category/tag pages) are not supported."
 
 plugins:
   status: replaced

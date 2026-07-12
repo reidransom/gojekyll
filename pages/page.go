@@ -66,6 +66,11 @@ type page struct {
 	firstLine int
 	raw       []byte
 
+	// extraContext holds additional template variables (e.g. "paginator")
+	// merged into TemplateContext. It is set before rendering starts and
+	// only read afterwards, so it needs no locking.
+	extraContext map[string]interface{}
+
 	m            sync.RWMutex
 	content      string
 	contentError error
@@ -152,13 +157,42 @@ func (p *page) TemplateContext() map[string]interface{} {
 	if env == "" {
 		env = "development"
 	}
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"page": p,
 		"site": p.site,
 		"jekyll": map[string]string{
 			"environment": env,
 			"version":     fmt.Sprintf("%s (jigyll)", version.Version)},
 	}
+	for k, v := range p.extraContext {
+		m[k] = v
+	}
+	return m
+}
+
+// SetTemplateVars adds template variables that TemplateContext merges into
+// every render of this page. Call it before rendering starts.
+func (p *page) SetTemplateVars(vars map[string]interface{}) {
+	if p.extraContext == nil {
+		p.extraContext = map[string]interface{}{}
+	}
+	for k, v := range vars {
+		p.extraContext[k] = v
+	}
+}
+
+// Clone returns a copy of the page at a different permalink. The copy has
+// its own render state and front matter, so it can be rendered with
+// different template variables than the original (e.g. paginator pages).
+func (p *page) Clone(permalink string) Page {
+	c := page{
+		file:      p.file,
+		firstLine: p.firstLine,
+		raw:       p.raw,
+	}
+	c.fm = frontmatter.Merge(p.fm) // fresh map; addPrevNext-style mutations can't alias
+	c.permalink = permalink
+	return &c
 }
 
 // PostDate is part of the Page interface.

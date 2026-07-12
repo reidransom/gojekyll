@@ -1,0 +1,7 @@
+---
+---
+page {{ paginator.page }} of {{ paginator.total_pages }};
+total {{ paginator.total_posts }};
+posts: {% for post in paginator.posts %}{{ post.title }};{% endfor %}
+prev {{ paginator.previous_page }} at {{ paginator.previous_page_path }};
+next {{ paginator.next_page }} at {{ paginator.next_page_path }};

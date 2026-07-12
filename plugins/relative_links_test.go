@@ -15,6 +15,7 @@ type relativeLinksTestSite struct {
 }
 
 func (s relativeLinksTestSite) AddHTMLPage(string, string, pages.FrontMatter) {}
+func (s relativeLinksTestSite) AddPage(Page)                                  {}
 func (s relativeLinksTestSite) Config() *config.Config                        { return &s.c }
 func (s relativeLinksTestSite) HasLayout(string) bool                         { return true }
 func (s relativeLinksTestSite) Pages() []Page                                 { return nil }
