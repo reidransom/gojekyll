@@ -9,7 +9,7 @@ import (
 type Flags struct {
 	// these are pointers so we can tell whether they've been set, and leave
 	// the config file alone if not
-	Destination, Host           *string
+	Destination, Host, BaseURL  *string
 	Drafts, Future, Unpublished *bool
 	Incremental, Verbose        *bool
 	Port                        *int
@@ -38,5 +38,40 @@ func (c *Config) ApplyFlags(f Flags) {
 		if configField.IsValid() && configField.CanSet() {
 			configField.Set(val)
 		}
+
+		// Update the liquid variables map for fields that should be exposed to templates
+		// Convert field name to lowercase for YAML/liquid compatibility
+		key := toLiquidKey(field.Name)
+		if key != "" {
+			c.Set(key, val.Interface())
+		}
+	}
+}
+
+// toLiquidKey converts a struct field name to its corresponding liquid variable key
+func toLiquidKey(fieldName string) string {
+	// Map struct field names to their liquid variable names
+	// Only map fields that are exposed to liquid templates
+	switch fieldName {
+	case "BaseURL":
+		return "baseurl"
+	case "Host":
+		return "host"
+	case "Port":
+		return "port"
+	case "Drafts":
+		return "show_drafts"
+	case "Future":
+		return "future"
+	case "Unpublished":
+		return "unpublished"
+	case "Verbose":
+		return "verbose"
+	case "Incremental":
+		return "incremental"
+	case "Destination":
+		return "destination"
+	default:
+		return ""
 	}
 }
