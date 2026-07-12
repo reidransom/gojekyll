@@ -130,7 +130,7 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config) {
 
 	// string escapes
 	e.RegisterFilter("cgi_escape", url.QueryEscape)
-	e.RegisterFilter("sassify", unimplementedFilter("sassify"))
+	e.RegisterFilter("sassify", sassifyFilter)
 	e.RegisterFilter("scssify", scssifyFilter)
 	e.RegisterFilter("smartify", smartifyFilter)
 	e.RegisterFilter("uri_escape", func(s string) string {
@@ -162,17 +162,6 @@ func requireNonEmptyArray(fn func([]interface{}) interface{}) func([]interface{}
 			return nil
 		}
 		return fn(array)
-	}
-}
-
-func unimplementedFilter(name string) func(value interface{}) interface{} {
-	warned := false
-	return func(value interface{}) interface{} {
-		if !warned {
-			fmt.Println("warning: unimplemented filter:", name)
-			warned = true
-		}
-		return value
 	}
 }
 
@@ -369,6 +358,18 @@ func getScssifyTranspiler() (*sass.Transpiler, error) {
 		scssifyTranspilerErr = sasserrors.Enhance(scssifyTranspilerErr)
 	})
 	return scssifyTranspiler, scssifyTranspilerErr
+}
+
+func sassifyFilter(s string) (string, error) {
+	comp, err := getScssifyTranspiler()
+	if err != nil {
+		return "", err
+	}
+	res, err := comp.Execute(sass.Args{
+		Source:       s,
+		SourceSyntax: sass.SourceSyntaxSASS,
+	})
+	return res.CSS, err
 }
 
 func scssifyFilter(s string) (string, error) {

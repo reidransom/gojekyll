@@ -205,7 +205,6 @@ Missing features:
 - Pagination
 - Math
 - Plugin system. ([Some individual plugins](./docs/plugins.md) are emulated.)
-- Liquid filter `sassify` is not implemented
 - Liquid is run in strict mode: undefined filters and variables are errors.
 - Missing markdown features:
   - [attribute list definitions](https://kramdown.gettalong.org/syntax.html#attribute-list-definitions) (ALDs, i.e. `{:refname: .class}` reusable sets; inline attribute lists `{: .class #id}` on headings are supported)
