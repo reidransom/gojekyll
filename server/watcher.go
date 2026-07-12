@@ -10,15 +10,19 @@ import (
 
 // Create a goroutine that rebuilds the site when files change.
 func (s *Server) watchReload() error {
-	site := s.Site
-	// FIXME reload swaps in a new site but we're still watching the old one.
-	// This won't pick up changes to include, exclude, etc.
-	changes, err := site.WatchFiles()
+	// Note: reload swaps in a new site but the watcher still uses the old
+	// site's include/exclude configuration until the server restarts.
+	changes, err := s.Site.WatchFiles()
 	if err != nil {
 		return err
 	}
 	go func() {
 		for change := range changes {
+			// Get current site reference with lock protection
+			s.m.Lock()
+			site := s.Site
+			s.m.Unlock()
+
 			// Resolves filenames to URLS *before* reloading the site, in case the latter
 			// changes the url -> filename routes.
 			urls := map[string]bool{}
