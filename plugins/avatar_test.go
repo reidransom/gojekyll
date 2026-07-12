@@ -24,6 +24,9 @@ func (s siteFake) Posts() []Page                                 { return nil }
 func (s siteFake) TemplateEngine() *liquid.Engine                { return s.e }
 func (s siteFake) HasRoute(string) bool                          { return false }
 func (s siteFake) FilenameURLPath(string) (string, bool)         { return "", false }
+func (s siteFake) ToLiquid() interface{} {
+	return liquid.IterationKeyedMap(s.c.Variables())
+}
 
 func TestAvatarTag(t *testing.T) {
 	engine := liquid.NewEngine()
