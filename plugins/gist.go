@@ -95,7 +95,7 @@ func fetchGistContent(gistID, filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to fetch gist: status %d", resp.StatusCode)

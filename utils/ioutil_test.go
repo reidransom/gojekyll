@@ -72,7 +72,7 @@ func TestRemoveEmptyDirectories(t *testing.T) {
 	// Create a temporary directory structure
 	tmpDir, err := os.MkdirTemp("", "remove-empty-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create subdirectories
 	emptyDir := filepath.Join(tmpDir, "empty")
@@ -109,12 +109,12 @@ func TestRemoveEmptyDirectoriesWithSymlink(t *testing.T) {
 	// Create a temporary directory to be the symlink target
 	targetDir, err := os.MkdirTemp("", "symlink-target")
 	require.NoError(t, err)
-	defer os.RemoveAll(targetDir)
+	defer func() { _ = os.RemoveAll(targetDir) }()
 
 	// Create a symlink to the target
 	tmpDir, err := os.MkdirTemp("", "symlink-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	symlinkPath := filepath.Join(tmpDir, "dest")
 	err = os.Symlink(targetDir, symlinkPath)
