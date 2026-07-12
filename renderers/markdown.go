@@ -2,18 +2,17 @@ package renderers
 
 import (
 	"bytes"
-	"io"
 	"regexp"
 
 	chromahtml "github.com/alecthomas/chroma/formatters/html"
+	"github.com/gohugoio/hugo-goldmark-extensions/passthrough"
 	"github.com/reidransom/jigyll/utils"
 	"github.com/yuin/goldmark"
+	highlighting "github.com/yuin/goldmark-highlighting"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	gmhtml "github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
-	highlighting "github.com/yuin/goldmark-highlighting"
-	"golang.org/x/net/html"
 )
 
 // goldmarkEngine is a shared goldmark instance configured with extensions
@@ -23,6 +22,14 @@ var goldmarkEngine = goldmark.New(
 		extension.GFM,            // tables, strikethrough, autolinks, task lists
 		extension.DefinitionList, // definition lists
 		extension.Footnote,       // footnotes
+		passthrough.New(passthrough.Config{ // math delimiters preserved for client-side MathJax/KaTeX
+			InlineDelimiters: []passthrough.Delimiters{
+				{Open: "$$", Close: "$$"},
+			},
+			BlockDelimiters: []passthrough.Delimiters{
+				{Open: "$$", Close: "$$"},
+			},
+		}),
 		highlighting.NewHighlighting(
 			highlighting.WithFormatOptions(
 				chromahtml.WithClasses(true),
@@ -59,8 +66,8 @@ var goldmarkEngine = goldmark.New(
 		parser.WithAttribute(),     // support {#id .class key="value"} on headings
 	),
 	goldmark.WithRendererOptions(
-		gmhtml.WithXHTML(),   // self-closing tags like <br />
-		gmhtml.WithUnsafe(),  // allow raw HTML passthrough
+		gmhtml.WithXHTML(),  // self-closing tags like <br />
+		gmhtml.WithUnsafe(), // allow raw HTML passthrough
 	),
 )
 
@@ -73,122 +80,132 @@ func goldmarkConvert(md []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// kramdown allows a same-line IAL on ATX headings: `## Heading {: #id .class}`.
+// goldmark's attribute parser expects Pandoc-style `{#id .class}` (no colon),
+// so rewrite the IAL on heading lines only. The colon must be followed by
+// whitespace — that keeps kramdown's TOC markers (`{:toc}`, `{:.no_toc}`)
+// literal so the TOC pass can still see them in the rendered HTML.
+var (
+	headingIALLineRE = regexp.MustCompile(`^(#{1,6}\s.*)\{:\s+([^}]+)\}(\s*)$`)
+	codeFenceRE      = regexp.MustCompile("^ {0,3}(```|~~~)")
+)
+
+// mapLinesOutsideFences applies fn to each line of md that is not part of a
+// fenced code block (``` or ~~~), leaving fenced content untouched.
+func mapLinesOutsideFences(md []byte, fn func(line []byte) []byte) []byte {
+	lines := bytes.Split(md, []byte("\n"))
+	inFence := false
+	for i, line := range lines {
+		if codeFenceRE.Match(line) {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
+		lines[i] = fn(line)
+	}
+	return bytes.Join(lines, []byte("\n"))
+}
+
+func preprocessHeadingIALs(md []byte) []byte {
+	return mapLinesOutsideFences(md, func(line []byte) []byte {
+		return headingIALLineRE.ReplaceAll(line, []byte("$1{$2}$3"))
+	})
+}
+
+// deIndentHTMLBlocks removes leading indentation from lines inside HTML blocks.
+// Kramdown doesn't treat 4-space indented content inside HTML blocks as code,
+// but CommonMark/Goldmark does. This preprocessor strips the indentation so
+// Goldmark renders the HTML correctly.
+//
+// An HTML block starts with a line beginning with an HTML block-level tag
+// (optionally preceded by up to 3 spaces) and ends at a blank line. Fenced
+// code blocks are left untouched — upstream's version lacks that guard and
+// strips the indentation out of HTML-looking code samples.
+var htmlBlockStartRE = regexp.MustCompile(`(?i)^\s{0,3}</?(?:address|article|aside|blockquote|details|dialog|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h[1-6]|header|hgroup|hr|li|main|nav|ol|p|pre|section|summary|table|ul)\b`)
+
+func deIndentHTMLBlocks(md []byte) []byte {
+	inHTMLBlock := false
+	return mapLinesOutsideFences(md, func(line []byte) []byte {
+		if !inHTMLBlock && htmlBlockStartRE.Match(line) {
+			inHTMLBlock = true
+		}
+		if !inHTMLBlock {
+			return line
+		}
+		if len(bytes.TrimSpace(line)) == 0 {
+			inHTMLBlock = false
+			return line
+		}
+		// Remove up to 4 leading spaces from lines inside HTML blocks
+		trimmed := line
+		for i := 0; i < 4; i++ {
+			if len(trimmed) > 0 && trimmed[0] == ' ' {
+				trimmed = trimmed[1:]
+			} else {
+				break
+			}
+		}
+		return trimmed
+	})
+}
+
 func renderMarkdown(md []byte) ([]byte, error) {
-	// Preprocess kramdown-style IALs to Pandoc-style for goldmark
-	md = preprocessIAL(md)
-	out, err := goldmarkConvert(md)
+	return renderMarkdownWithOptions(md, nil)
+}
+
+func renderMarkdownWithOptions(md []byte, opts *TOCOptions) ([]byte, error) {
+	// Set default options if not provided
+	// Jekyll's default toc_levels is "2..6" to exclude H1 headings
+	if opts == nil {
+		opts = &TOCOptions{
+			MinLevel:      2,
+			MaxLevel:      6,
+			UseJekyllHTML: true, // Use Jekyll-compatible HTML structure by default
+		}
+	}
+	// Ensure valid level ranges
+	if opts.MinLevel < 1 {
+		opts.MinLevel = 1
+	}
+	if opts.MaxLevel > 6 {
+		opts.MaxLevel = 6
+	}
+	if opts.MinLevel > opts.MaxLevel {
+		opts.MinLevel = 1
+		opts.MaxLevel = 6
+	}
+
+	// Preprocess: rewrite kramdown heading IALs to goldmark attribute syntax,
+	// and de-indent HTML blocks to prevent Goldmark from treating indented
+	// HTML as code blocks (kramdown compatibility)
+	md = preprocessHeadingIALs(md)
+	md = deIndentHTMLBlocks(md)
+
+	html, err := goldmarkConvert(md)
+	if err != nil {
+		return nil, utils.WrapError(err, "markdown conversion")
+	}
+
+	// Process inner markdown (for nested markdown rendering)
+	html, err = renderInnerMarkdown(html)
 	if err != nil {
 		return nil, utils.WrapError(err, "markdown")
 	}
-	out, err = renderInnerMarkdown(out)
-	if err != nil {
-		return nil, utils.WrapError(err, "markdown")
+
+	// Process TOC markers if they exist
+	// Note: Only {:toc} is valid kramdown syntax; {::toc} is not processed
+	// Jekyll only processes {:toc} in unordered lists, leaving literals elsewhere
+	if tocPatternInline.Match(html) && shouldProcessTOC(html) {
+		html, err = processTOC(html, opts)
+		if err != nil {
+			return nil, utils.WrapError(err, "toc generation")
+		}
 	}
-	return out, nil
+	return html, nil
 }
 
 func _renderMarkdown(md []byte) ([]byte, error) {
-	md = preprocessIAL(md)
-	return goldmarkConvert(md)
-}
-
-// search HTML for markdown=1, and process if found
-func renderInnerMarkdown(b []byte) ([]byte, error) {
-	z := html.NewTokenizer(bytes.NewReader(b))
-	buf := new(bytes.Buffer)
-outer:
-	for {
-		tt := z.Next()
-		switch tt {
-		case html.ErrorToken:
-			if z.Err() == io.EOF {
-				break outer
-			}
-			return nil, z.Err()
-		case html.StartTagToken:
-			if hasMarkdownAttr(z) {
-				_, err := buf.Write(stripMarkdownAttr(z.Raw()))
-				if err != nil {
-					return nil, err
-				}
-				if err := processInnerMarkdown(buf, z); err != nil {
-					return nil, err
-				}
-				// the above leaves z set to the end token
-				// fall through to render it
-			}
-		}
-		_, err := buf.Write(z.Raw())
-		if err != nil {
-			return nil, err
-		}
-	}
-	return buf.Bytes(), nil
-}
-
-func hasMarkdownAttr(z *html.Tokenizer) bool {
-	for {
-		k, v, more := z.TagAttr()
-		switch {
-		case string(k) == "markdown" && string(v) == "1":
-			return true
-		case !more:
-			return false
-		}
-	}
-}
-
-var markdownAttrRE = regexp.MustCompile(`\s*markdown\s*=[^\s>]*\s*`)
-
-// return the text of a start tag, w/out the markdown attribute
-func stripMarkdownAttr(tag []byte) []byte {
-	tag = markdownAttrRE.ReplaceAll(tag, []byte(" "))
-	tag = bytes.Replace(tag, []byte(" >"), []byte(">"), 1)
-	return tag
-}
-
-// Used inside markdown=1.
-// TODO Instead of this approach, only count tags that match the start
-// tag. For example, if <div markdown="1"> kicked off the inner markdown,
-// count the div depth.
-var notATagRE = regexp.MustCompile(`@|(https?|ftp):`)
-
-// called once markdown="1" attribute is detected.
-// Collects the HTML tokens into a string, applies markdown to them,
-// and writes the result
-func processInnerMarkdown(w io.Writer, z *html.Tokenizer) error {
-	buf := new(bytes.Buffer)
-	depth := 1
-loop:
-	for {
-		tt := z.Next()
-		switch tt {
-		case html.ErrorToken:
-			if z.Err() == io.EOF {
-				// End of document reached before matching end tag;
-				// render whatever content we collected.
-				break loop
-			}
-			return z.Err()
-		case html.StartTagToken:
-			if !notATagRE.Match(z.Raw()) {
-				depth++
-			}
-		case html.EndTagToken:
-			depth--
-			if depth == 0 {
-				break loop
-			}
-		}
-		_, err := buf.Write(z.Raw())
-		if err != nil {
-			return err
-		}
-	}
-	html, err := _renderMarkdown(buf.Bytes())
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(html)
-	return err
+	return goldmarkConvert(preprocessHeadingIALs(md))
 }

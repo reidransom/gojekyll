@@ -18,6 +18,22 @@ func TestDefaultConfig(t *testing.T) {
 	require.Equal(t, "_layouts", c.LayoutsDir)
 }
 
+func TestConfig_Map(t *testing.T) {
+	c := Default()
+	require.NoError(t, Unmarshal([]byte("kramdown:\n  toc_levels: \"2..3\""), &c))
+	m, ok := c.Map("kramdown")
+	require.True(t, ok)
+	require.Equal(t, "2..3", m["toc_levels"])
+
+	_, ok = c.Map("missing")
+	require.False(t, ok)
+
+	c = Default()
+	require.NoError(t, Unmarshal([]byte(`title: scalar`), &c))
+	_, ok = c.Map("title")
+	require.False(t, ok)
+}
+
 func TestConfig_Plugins(t *testing.T) {
 	c := Default()
 	require.NoError(t, Unmarshal([]byte(`plugins: ['a']`), &c))

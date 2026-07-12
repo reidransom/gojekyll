@@ -319,10 +319,18 @@ func (c *Config) Set(key string, val interface{}) {
 
 // Map returns the config indexed by key, if it's a map.
 func (c *Config) Map(key string) (map[string]interface{}, bool) {
-	if m, ok := c.m[key]; ok {
-		if m, ok := m.(map[string]interface{}); ok {
-			return m, ok
+	switch m := c.m[key].(type) {
+	case map[string]interface{}:
+		return m, true
+	case map[interface{}]interface{}:
+		// yaml.v2 unmarshals nested mappings with interface{} keys
+		result := make(map[string]interface{}, len(m))
+		for k, v := range m {
+			if ks, ok := k.(string); ok {
+				result[ks] = v
+			}
 		}
+		return result, true
 	}
 	return nil, false
 }
