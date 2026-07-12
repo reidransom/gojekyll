@@ -16,13 +16,14 @@ type siteFake struct {
 }
 
 func (s siteFake) AddHTMLPage(string, string, pages.FrontMatter) {}
-func (s siteFake) RemoveRoute(string)                              {}
+func (s siteFake) RemoveRoute(string)                            {}
 func (s siteFake) Config() *config.Config                        { return &s.c }
 func (s siteFake) HasLayout(string) bool                         { return true }
 func (s siteFake) Pages() []Page                                 { return nil }
 func (s siteFake) Posts() []Page                                 { return nil }
 func (s siteFake) TemplateEngine() *liquid.Engine                { return s.e }
 func (s siteFake) HasRoute(string) bool                          { return false }
+func (s siteFake) FilenameURLPath(string) (string, bool)         { return "", false }
 
 func TestAvatarTag(t *testing.T) {
 	engine := liquid.NewEngine()
