@@ -44,7 +44,10 @@ func (p *page) permalinkVariables() map[string]string {
 		relpath = p.relPath
 		root    = utils.TrimExt(relpath)
 		name    = filepath.Base(root)
-		slug    = p.fm.String("slug", utils.Slugify(name))
+		// The slug front matter (set from the filename for posts) overrides the
+		// filename-derived slug. Like Ruby Jekyll's UrlDrop, :slug is lowercased
+		// while :title preserves case; neither uses the title front matter.
+		slugSource = p.fm.String("slug", name)
 		// date      = p.fileModTime
 		date = p.PostDate().In(time.Local)
 	)
@@ -53,8 +56,8 @@ func (p *page) permalinkVariables() map[string]string {
 		"collection": p.fm.String("collection", ""),
 		"name":       utils.Slugify(name),
 		"path":       "/" + root, // TODO are we removing and then adding this?
-		"slug":       slug,
-		"title":      utils.Slugify(p.fm.String("title", name)),
+		"slug":       utils.Slugify(slugSource),
+		"title":      utils.SlugifyPermalink(slugSource),
 		"y_day":      fmt.Sprintf("%03d", date.YearDay()),
 		// Undocumented but evident:
 		"output_ext": p.OutputExt(),

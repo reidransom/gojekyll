@@ -40,8 +40,15 @@ func (s postsStrategy) parseFilename(filename string, fm map[string]interface{})
 	if t, title, found := utils.ParseFilenameDateTitle(filename); found {
 		fm["date"] = t
 		fm["title"] = title
-		fm["slug"] = utils.Slugify(title)
+		fm["slug"] = rawFilenameSlug(filename)
 	}
+}
+
+// rawFilenameSlug returns the filename portion after the date prefix, verbatim.
+// Like Ruby Jekyll, the slug keeps the filename's case and Unicode characters;
+// slugification happens later, per permalink variable.
+func rawFilenameSlug(filename string) string {
+	return utils.TrimExt(filepath.Base(filename))[len("2006-01-02-"):]
 }
 
 func (s postsStrategy) isCollectible(filename string) bool {
@@ -63,12 +70,12 @@ func (s draftsStrategy) parseFilename(filename string, fm map[string]interface{}
 	if t, title, found := utils.ParseFilenameDateTitle(filename); found {
 		fm["date"] = t
 		fm["title"] = title
-		fm["slug"] = utils.Slugify(title)
+		fm["slug"] = rawFilenameSlug(filename)
 		return
 	}
 	base := utils.TrimExt(filepath.Base(filename))
 	fm["title"] = utils.Titleize(base)
-	fm["slug"] = utils.Slugify(base)
+	fm["slug"] = base
 }
 
 func (s draftsStrategy) isCollectible(string) bool { return true }

@@ -3,6 +3,8 @@ package utils
 import (
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // LeftPad left-pads s with spaces to n wide. It's an alternative to http://left-pad.io.
@@ -42,14 +44,27 @@ func SafeReplaceAllStringFunc(re *regexp.Regexp, src string, repl func(m string)
 	}), nil
 }
 
-var nonAlphanumericSequenceMatcher = regexp.MustCompile(`[^[:alnum:]]+`)
+// Matches Ruby Jekyll's SLUGIFY_DEFAULT_REGEXP: Unicode letters, digits, and
+// combining marks survive; everything else collapses to a hyphen.
+var nonAlphanumericSequenceMatcher = regexp.MustCompile(`[^\p{M}\p{L}\p{Nd}]+`)
 var leadingOrTrailingHyphenMatcher = regexp.MustCompile(`(^-|-$)`)
 
-// Slugify replaces each sequence of non-alphanumerics by a single hyphen
+// Slugify replaces each sequence of non-alphanumerics by a single hyphen,
+// and lowercases the result. This matches Ruby Jekyll's default slugify mode
+// (and therefore the Liquid `slugify` filter).
 func Slugify(s string) string {
 	slug := strings.ToLower(nonAlphanumericSequenceMatcher.ReplaceAllString(s, "-"))
 
 	// remove leading and trailing hyphen
+	slug = leadingOrTrailingHyphenMatcher.ReplaceAllString(slug, "")
+	return slug
+}
+
+// SlugifyPermalink replaces each sequence of non-alphanumerics by a single
+// hyphen, but preserves the original case. Used for the permalink :title
+// variable, which Ruby Jekyll slugifies with cased: true.
+func SlugifyPermalink(s string) string {
+	slug := nonAlphanumericSequenceMatcher.ReplaceAllString(s, "-")
 	slug = leadingOrTrailingHyphenMatcher.ReplaceAllString(slug, "")
 	return slug
 }
@@ -77,8 +92,8 @@ func StringArrayContains(a []string, s string) bool {
 func Titleize(s string) string {
 	a := strings.Split(s, "-")
 	for i, s := range a {
-		if len(s) > 0 {
-			a[i] = strings.ToUpper(s[:1]) + s[1:]
+		if r, size := utf8.DecodeRuneInString(s); size > 0 {
+			a[i] = string(unicode.ToUpper(r)) + s[size:]
 		}
 	}
 	return strings.Join(a, " ")

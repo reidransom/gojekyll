@@ -112,6 +112,35 @@ func TestExpandPermalinkPattern(t *testing.T) {
 		require.Error(t, err)
 		require.Zero(t, p)
 	})
+
+	// :title comes from the filename (or slug front matter), never the title
+	// front matter, and preserves case; :slug is the lowercased form; :name
+	// always derives from the filename. Matches Ruby Jekyll's UrlDrop.
+	t.Run(":title ignores front matter title", func(t *testing.T) {
+		p, err := testPermalinkPattern("/:title", "/a/b/base.html",
+			map[string]interface{}{"title": "A Fancy Title"})
+		require.NoError(t, err)
+		require.Equal(t, "/base", p)
+	})
+
+	t.Run(":title preserves case, :slug and :name lowercase", func(t *testing.T) {
+		p, err := testPermalinkPattern("/:title/:slug/:name", "/a/b/My-Page.html", nil)
+		require.NoError(t, err)
+		require.Equal(t, "/My-Page/my-page/my-page", p)
+	})
+
+	t.Run("slug front matter overrides :title and :slug but not :name", func(t *testing.T) {
+		p, err := testPermalinkPattern("/:title/:slug/:name", "/a/b/base.html",
+			map[string]interface{}{"slug": "Custom Slug"})
+		require.NoError(t, err)
+		require.Equal(t, "/Custom-Slug/custom-slug/base", p)
+	})
+
+	t.Run("unicode filenames survive slugification", func(t *testing.T) {
+		p, err := testPermalinkPattern("/:title", "/a/b/白法-Café.html", nil)
+		require.NoError(t, err)
+		require.Equal(t, "/白法-Café", p)
+	})
 }
 
 // TestIndexPagePermalink covers the default-pattern (no explicit permalink)
