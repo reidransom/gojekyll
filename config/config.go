@@ -85,7 +85,7 @@ func (c *Config) FromDirectory(dir string, configFiles string) error {
 			configFiles = jekyllConfig
 		}
 	}
-	
+
 	// If explicit config files are specified, use those
 	if configFiles != "" {
 		return c.loadConfigFiles(dir, configFiles)
@@ -106,13 +106,13 @@ func (c *Config) FromDirectory(dir string, configFiles string) error {
 		c.ConfigFile = path
 	}
 	c.Source = dir
-	
+
 	// Override URL from JEKYLL_URL environment variable if set
 	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
 		c.AbsoluteURL = jekyllURL
 		c.Set("url", jekyllURL)
 	}
-	
+
 	return nil
 }
 
@@ -124,23 +124,23 @@ func (c *Config) loadConfigFiles(dir string, configFiles string) error {
 	for i, f := range files {
 		files[i] = strings.TrimSpace(f)
 	}
-	
+
 	if len(files) == 0 {
 		return nil
 	}
-	
+
 	// Track config file names for display
 	configFileNames := []string{}
-	
+
 	// Merged YAML data
 	var mergedData map[string]interface{}
-	
+
 	// Load and merge config files in order
 	for _, configFile := range files {
 		if configFile == "" {
 			continue
 		}
-		
+
 		// Determine full path
 		var configPath string
 		if filepath.IsAbs(configFile) {
@@ -148,19 +148,19 @@ func (c *Config) loadConfigFiles(dir string, configFiles string) error {
 		} else {
 			configPath = filepath.Join(dir, configFile)
 		}
-		
+
 		// Read config file
 		bytes, err := os.ReadFile(configPath)
 		if err != nil {
 			return utils.WrapPathError(err, configPath)
 		}
-		
+
 		// Parse YAML into a map
 		var fileData map[string]interface{}
 		if err := yaml.Unmarshal(bytes, &fileData); err != nil {
 			return utils.WrapPathError(err, configPath)
 		}
-		
+
 		// Merge into accumulated data
 		if mergedData == nil {
 			mergedData = fileData
@@ -170,20 +170,20 @@ func (c *Config) loadConfigFiles(dir string, configFiles string) error {
 				mergedData[k] = v
 			}
 		}
-		
+
 		configFileNames = append(configFileNames, configPath)
 	}
-	
+
 	// Convert merged data back to YAML and unmarshal into config
 	mergedBytes, err := yaml.Marshal(mergedData)
 	if err != nil {
 		return err
 	}
-	
+
 	if err = Unmarshal(mergedBytes, c); err != nil {
 		return err
 	}
-	
+
 	// Set the config file display string
 	if len(configFileNames) == 1 {
 		c.ConfigFile = configFileNames[0]
@@ -191,13 +191,13 @@ func (c *Config) loadConfigFiles(dir string, configFiles string) error {
 		c.ConfigFile = strings.Join(configFileNames, ", ")
 	}
 	c.Source = dir
-	
+
 	// Override URL from JEKYLL_URL environment variable if set
 	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
 		c.AbsoluteURL = jekyllURL
 		c.Set("url", jekyllURL)
 	}
-	
+
 	return nil
 }
 
@@ -344,4 +344,3 @@ func (c *Config) String(key string) (string, bool) {
 	}
 	return "", false
 }
-

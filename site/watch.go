@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/reidransom/jigyll/utils"
 	"github.com/radovskyb/watcher"
+	"github.com/reidransom/jigyll/utils"
 )
 
 // FilesEvent is a list of changed or added site source files, with a single
@@ -57,6 +57,7 @@ func (s *Site) makeFileWatcher() (<-chan string, error) {
 	}
 }
 
+//nolint:gocyclo
 func (s *Site) makeEventWatcher() (<-chan string, error) {
 	var (
 		sourceDir = s.SourceDir()
@@ -73,7 +74,7 @@ func (s *Site) makeEventWatcher() (<-chan string, error) {
 		if err != nil {
 			return err
 		}
-	if info.IsDir() {
+		if info.IsDir() {
 			rel := utils.MustRel(sourceDir, path)
 			switch {
 			case rel != "." && s.Exclude(rel):

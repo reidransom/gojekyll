@@ -81,19 +81,19 @@ func convertDates(m map[string]interface{}) {
 func parseDate(s string) (time.Time, error) {
 	// Common date formats used in Jekyll
 	formats := []string{
-		time.RFC3339,                     // 2006-01-02T15:04:05Z07:00
-		"2006-01-02 15:04:05-07:00",       // 2025-01-01 01:00:00+00:00
-		"2006-01-02 15:04:05 -07:00",      // With space before timezone
-		"2006-01-02T15:04:05",             // Without timezone
-		"2006-01-02 15:04:05",             // Without timezone, space separator
-		"2006-01-02",                      // Date only
+		time.RFC3339,                 // 2006-01-02T15:04:05Z07:00
+		"2006-01-02 15:04:05-07:00",  // 2025-01-01 01:00:00+00:00
+		"2006-01-02 15:04:05 -07:00", // With space before timezone
+		"2006-01-02T15:04:05",        // Without timezone
+		"2006-01-02 15:04:05",        // Without timezone, space separator
+		"2006-01-02",                 // Date only
 	}
-	
+
 	for _, format := range formats {
 		if t, err := time.Parse(format, s); err == nil {
 			return t, nil
 		}
 	}
-	
+
 	return time.Time{}, &time.ParseError{}
 }

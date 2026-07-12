@@ -40,7 +40,7 @@ func includeFromDir(dir string, rc render.Context) (string, error) {
 		return "", err
 	}
 	filename := filepath.Join(dir, args.Args[0])
-	
+
 	// Check for circular includes
 	includeStack := getIncludeStack(rc)
 	for _, includedFile := range includeStack {
@@ -48,12 +48,13 @@ func includeFromDir(dir string, rc render.Context) (string, error) {
 			return "", fmt.Errorf("include loop detected: %s", filename)
 		}
 	}
-	
-	// Add current file to stack and render
-	newStack := append(includeStack, filename)
+
+	// Add current file to stack and render; copy so sibling includes
+	// don't share the stack's backing array
+	newStack := append(append([]string(nil), includeStack...), filename)
 	vars := map[string]interface{}{
-		"include":              include,
-		"__include_stack__":    newStack,
+		"include":           include,
+		"__include_stack__": newStack,
 	}
 	return rc.RenderFile(filename, vars)
 }

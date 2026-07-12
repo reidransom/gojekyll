@@ -12,9 +12,9 @@ import (
 	"sync"
 
 	"github.com/jaschaephraim/lrserver"
+	"github.com/pkg/browser"
 	"github.com/reidransom/jigyll/site"
 	"github.com/reidransom/liquid"
-	"github.com/pkg/browser"
 )
 
 // Server serves the site on HTTP.

@@ -109,6 +109,8 @@ func (m *moneyFormatter) formatCents(cents int64, decimals int) string {
 // toCents interprets a Liquid value as an integer number of cents. It accepts
 // integers, floats, and numeric strings, returning false for anything that
 // isn't a parseable number (e.g. nil), so the filter renders empty.
+//
+//nolint:gocyclo // exhaustive numeric type switch
 func toCents(value interface{}) (int64, bool) {
 	switch v := value.(type) {
 	case int:

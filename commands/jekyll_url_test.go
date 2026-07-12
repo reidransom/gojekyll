@@ -46,11 +46,11 @@ site.url is: {{ site.url }}
 	require.NoError(t, err)
 
 	outputStr := string(output)
-	
+
 	// Verify that the output contains the overridden URL, not the config URL
-	require.Contains(t, outputStr, "https://override.example.com", 
+	require.Contains(t, outputStr, "https://override.example.com",
 		"Rendered output should contain the JEKYLL_URL override value")
-	require.NotContains(t, outputStr, "https://example.com", 
+	require.NotContains(t, outputStr, "https://example.com",
 		"Rendered output should NOT contain the original config url value")
 }
 
@@ -92,9 +92,8 @@ site.url is: {{ site.url }}
 	require.NoError(t, err)
 
 	outputStr := string(output)
-	
+
 	// Verify that the output contains the config URL
-	require.Contains(t, outputStr, "https://config.example.com", 
+	require.Contains(t, outputStr, "https://config.example.com",
 		"Rendered output should contain the config url value when JEKYLL_URL is not set")
 }
-

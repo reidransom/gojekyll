@@ -13,7 +13,7 @@ func TestFindTheme(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "jigyll-theme-test")
 	require.NoError(t, err)
-defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 
 	t.Run("no theme specified", func(t *testing.T) {
 		flags := config.Flags{}
@@ -34,7 +34,7 @@ defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 		s := New(flags)
 		s.cfg.Source = tempDir
 		s.cfg.Theme = "mytheme"
-		
+
 		err = s.findTheme()
 		require.NoError(t, err)
 		require.Equal(t, themeDir, s.themeDir)
@@ -44,19 +44,19 @@ defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 		// Use a clean temp directory without the theme
 		cleanTempDir, err := os.MkdirTemp("", "jigyll-theme-test-clean")
 		require.NoError(t, err)
-defer func() { require.NoError(t, os.RemoveAll(cleanTempDir)) }()
+		defer func() { require.NoError(t, os.RemoveAll(cleanTempDir)) }()
 
 		flags := config.Flags{}
 		s := New(flags)
 		s.cfg.Source = cleanTempDir
 		s.cfg.Theme = "nonexistent-theme"
-		
+
 		err = s.findTheme()
 		require.Error(t, err)
 		// The error could be either our custom message or a bundle error
 		errorMsg := err.Error()
-		require.True(t, 
-			err.Error() != "", 
+		require.True(t,
+			err.Error() != "",
 			"Expected error when theme is not found, got: %s", errorMsg)
 	})
 
@@ -65,7 +65,7 @@ defer func() { require.NoError(t, os.RemoveAll(cleanTempDir)) }()
 		s := New(flags)
 		s.cfg.Source = tempDir
 		s.cfg.Theme = ""
-		
+
 		err := s.findTheme()
 		require.NoError(t, err)
 		require.Empty(t, s.themeDir)
@@ -81,7 +81,7 @@ defer func() { require.NoError(t, os.RemoveAll(cleanTempDir)) }()
 		s := New(flags)
 		s.cfg.Source = tempDir
 		s.cfg.Theme = "missing-theme"
-		
+
 		err = s.findTheme()
 		require.Error(t, err)
 		// Just verify we get an error, the exact message may vary depending on bundle availability
@@ -98,7 +98,7 @@ defer func() { require.NoError(t, os.RemoveAll(cleanTempDir)) }()
 		s := New(flags)
 		s.cfg.Source = tempDir
 		s.cfg.Theme = "priority-theme"
-		
+
 		err = s.findTheme()
 		require.NoError(t, err)
 		require.Equal(t, themeDir, s.themeDir)
@@ -111,7 +111,7 @@ func TestReadThemeAssets(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "jigyll-theme-assets-test")
 	require.NoError(t, err)
-defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 
 	t.Run("theme has assets directory", func(t *testing.T) {
 		// Create theme with assets
@@ -119,7 +119,7 @@ defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 		assetsDir := filepath.Join(themeDir, "assets")
 		err := os.MkdirAll(assetsDir, 0755)
 		require.NoError(t, err)
-		
+
 		// Create a test asset file
 		testAsset := filepath.Join(assetsDir, "style.css")
 		err = os.WriteFile(testAsset, []byte("body { color: red; }"), 0644)
@@ -130,7 +130,7 @@ defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 		s.cfg.Source = tempDir
 		s.themeDir = themeDir
 		s.Routes = make(map[string]Document) // Initialize Routes map
-		
+
 		err = s.readThemeAssets()
 		require.NoError(t, err)
 	})
@@ -146,7 +146,7 @@ defer func() { require.NoError(t, os.RemoveAll(tempDir)) }()
 		s.cfg.Source = tempDir
 		s.themeDir = themeDir
 		s.Routes = make(map[string]Document) // Initialize Routes map
-		
+
 		err = s.readThemeAssets()
 		require.NoError(t, err) // Should not error when assets dir doesn't exist
 	})

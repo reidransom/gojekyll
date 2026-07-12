@@ -76,4 +76,3 @@ title: Test Site
 	require.True(t, ok, "url should be present in variables")
 	require.Equal(t, "https://example.com", urlValue)
 }
-

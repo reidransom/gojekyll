@@ -21,7 +21,7 @@ func routesCommand(site *site.Site) error {
 				routeMap[u] = p.Source()
 			}
 		}
-		
+
 		// Output JSON
 		jsonData, err := json.MarshalIndent(routeMap, "", "  ")
 		if err != nil {

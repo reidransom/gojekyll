@@ -126,11 +126,11 @@ var filterTestBindings = liquid.Bindings{
 			{"name": "d", "weight": 30},
 		},
 	},
-	"time": timeMustParse("2008-11-07T13:07:54Z"),
-	"ws":   "a  b\n\t c",
-	"uniq_array": []string{"a", "b", "a", "c", "b"},
+	"time":        timeMustParse("2008-11-07T13:07:54Z"),
+	"ws":          "a  b\n\t c",
+	"uniq_array":  []string{"a", "b", "a", "c", "b"},
 	"empty_array": []string{},
-	"all_same": []string{"x", "x", "x"},
+	"all_same":    []string{"x", "x", "x"},
 }
 
 func TestFilters(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//func TestSite_WatchRebuild(t *testing.T) {
+// func TestSite_WatchRebuild(t *testing.T) {
 
 func TestSite_Reloaded(t *testing.T) {
 	s0 := New(config.Flags{})
@@ -19,8 +19,8 @@ func TestSite_Reloaded(t *testing.T) {
 	require.NotEqual(t, s0, s1)
 }
 
-//func TestSite_processFilesEvent(t *testing.T) {
-//func TestSite_rebuild(t *testing.T) {
+// func TestSite_processFilesEvent(t *testing.T) {
+// func TestSite_rebuild(t *testing.T) {
 
 func TestSite_RequiresFullReload(t *testing.T) {
 	s := New(config.Flags{})

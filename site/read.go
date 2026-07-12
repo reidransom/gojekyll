@@ -76,6 +76,8 @@ func (s *Site) isIncludedPath(siteRel string) bool {
 }
 
 // readFiles scans the source directory and creates pages and collection.
+//
+//nolint:gocyclo
 func (s *Site) readFiles(dir, base string) error {
 	return filepath.Walk(dir, func(filename string, info os.FileInfo, err error) error {
 		if err != nil {

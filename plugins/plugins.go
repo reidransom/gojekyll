@@ -137,7 +137,7 @@ type jekyllOptionalFrontMatterPlugin struct{ plugin }
 var requireFrontMatterExclude = []string{
 	"README",
 	"LICENSE",
-	"LICENCE",
+	"LICENCE", //nolint:misspell // British-spelled filename Jekyll excludes
 	"COPYING",
 	"CODE_OF_CONDUCT",
 	"CONTRIBUTING",
