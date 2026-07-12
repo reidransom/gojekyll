@@ -9,14 +9,6 @@
 
 {% avatar user='osteele' size=24 %}
 
-## Env
-
-{% env PWD %}
-
-{% env varname='PWD' %}
-
-x{% env XNOTFOUNDX %}x
-
 ## Gist
 
 (From <https://jekyllrb.com/docs/templates/>)
