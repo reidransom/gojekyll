@@ -37,7 +37,7 @@ the source of truth for how completely each is implemented.
 | [jekyll-mentions][jekyll-mentions] | GitHub Pages | ✓ | |
 | [jekyll-optional-front-matter][jekyll-optional-front-matter] | GitHub Pages | ✓ | |
 | [jekyll-paginate][jekyll-paginate] | core | ✗ | recognized so builds don't fail; exposes a stub `paginator` only — see [Pagination](/docs/pagination/) |
-| [jekyll-readme-index][jekyll-readme-index] | GitHub Pages | ✗ | |
+| [jekyll-readme-index][jekyll-readme-index] | GitHub Pages | ✓ | |
 | [jekyll-redirect-from][jekyll-redirect-from] | GitHub Pages | ✓ | user template |
 | [jekyll-relative-links][jekyll-relative-links] | GitHub Pages | ✓ | |
 | [jekyll-sass-converter][jekyll-sass-converter] | core | ✓ | always enabled (by design); no way to disable; only `sass_dir` is configurable |
