@@ -84,12 +84,41 @@ defaults:
       layout: "default"
 ```
 
-Later entries override earlier ones, and front matter in the file itself
-always wins.
+Front matter in the file itself always wins. Beyond that, conflicts between
+matching scopes are resolved by **precedence**, as in Jekyll:
 
-> **Differs from Jekyll.** `path` is matched as a plain **prefix**, not a
-> glob — `path: "section"` matches everything under `section/`, but
-> `path: "section/*/special-page.html"` will not work.
+1. The scope with the **longer** `path` wins, regardless of config order.
+2. On equal-length paths, a scope with a `type` beats one without.
+3. On a final tie, the **later** entry in `defaults` wins.
+
+Matching scopes contribute their values by merging (different keys coexist;
+overlapping keys are decided by the precedence rules above).
+
+`path` may contain globs using `*` and `**`:
+
+```yaml
+defaults:
+  - scope: { path: "assets/**" }
+    values: { sitemap: false, image: true }
+  - scope: { path: "section/*/special.md" }
+    values: { layout: special }
+```
+
+`*` matches a single path segment (it does not cross `/`); `**` matches any
+number of segments. As in Jekyll, a glob scope also matches any file **under**
+a directory the glob expands to, so `section/*` applies to `section/a/deep/f.md`
+(via the `section/a` directory).
+
+`type` filters which documents a scope applies to. A scope without `type`
+matches every document, including **static files** (files without front
+matter). A scope with `type` matches only documents of that type; static files
+outside any collection are untyped, so a `type: pages` scope does **not** apply
+to them (e.g. `scope: { type: pages } values: { published: false }` will not
+drop static files). Static files inside a collection have that collection's
+name as their type.
+
+See also [Static Files](/docs/static-files/) for surfacing default values on
+static files via `site.static_files`.
 
 ## Environments
 

@@ -110,10 +110,16 @@ func (s *Site) readFiles(dir, base string) error {
 			return nil
 		}
 		s.diag.FilesFound++
-		// Non-collection pages have type "pages" in Jekyll's defaults scope
-		// vocabulary (static files pass through here too, but they ignore
-		// front matter defaults entirely).
-		defaultFrontmatter := s.cfg.GetFrontMatterDefaults("pages", rel)
+		// Non-collection documents use Jekyll's defaults vocabulary: pages get
+		// type "pages", static files (no front matter) are untyped and so only
+		// match typeless scopes — mirroring Jekyll's nil-typed static files.
+		defaultFrontmatter := func(isStatic bool) pages.FrontMatter {
+			typename := "pages"
+			if isStatic {
+				typename = ""
+			}
+			return s.cfg.GetFrontMatterDefaults(typename, rel)
+		}
 		d, err := pages.NewFile(s, filename, filepath.ToSlash(rel), defaultFrontmatter)
 		if err != nil {
 			return utils.WrapPathError(err, filename)

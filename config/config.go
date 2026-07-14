@@ -2,9 +2,11 @@ package config
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/reidransom/jigyll/utils"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -230,17 +232,106 @@ func (c *Config) SourceDir() string {
 	return utils.MustAbs(c.Source)
 }
 
+// defaultScope is the anonymous scope struct embedded in Config.Defaults;
+// the type alias lets helper functions take a pointer to it.
+type defaultScope = struct {
+	Path string
+	Type string
+}
+
 // GetFrontMatterDefaults implements https://jekyllrb.com/docs/configuration/#front-matter-defaults
-func (c *Config) GetFrontMatterDefaults(typename, rel string) (m map[string]interface{}) {
-	for _, entry := range c.Defaults {
-		scope := &entry.Scope
-		hasPrefix := strings.HasPrefix(rel, scope.Path)
-		hasType := scope.Type == "" || scope.Type == typename
-		if hasPrefix && hasType {
-			m = utils.MergeStringMaps(m, entry.Values)
+//
+// It mirrors Jekyll's frontmatter_defaults algorithm: a scope matches when
+// its type is absent or equal to typename AND its path matches rel; conflicts
+// between matching scopes are resolved by precedence (longer sanitized path
+// wins, then a type-bearing scope beats a typeless one, then later config
+// entries win). typename == "" represents an untyped document (a static file
+// outside any collection), which only matches typeless scopes.
+func (c *Config) GetFrontMatterDefaults(typename, rel string) map[string]interface{} {
+	rel = strings.TrimPrefix(filepath.ToSlash(rel), "/")
+	var m map[string]interface{}
+	var prev *defaultScope
+	for i := range c.Defaults {
+		entry := &c.Defaults[i]
+		if !scopeMatches(&entry.Scope, typename, rel) {
+			continue
+		}
+		if hasPrecedence(prev, &entry.Scope) {
+			m = utils.MergeStringMaps(m, entry.Values) // new entry wins
+			prev = &entry.Scope
+		} else {
+			// old winner keeps overriding; MergeStringMaps returns a fresh map,
+			// so entry.Values is never mutated.
+			m = utils.MergeStringMaps(entry.Values, m)
 		}
 	}
-	return
+	return m
+}
+
+// scopeMatches reports whether a front-matter-defaults scope applies to a
+// document of the given type and rel path, following Jekyll's rules:
+// an empty type matches any document (including untyped ones), an empty path
+// matches every path, a path containing "*" is treated as a glob, and any
+// other path is a raw string-prefix test.
+func scopeMatches(scope *defaultScope, typename, rel string) bool {
+	if scope.Type != "" && scope.Type != typename {
+		return false
+	}
+	switch {
+	case scope.Path == "":
+		return true
+	case strings.Contains(scope.Path, "*"):
+		return globMatches(scope.Path, rel)
+	default:
+		return strings.HasPrefix(rel, scope.Path)
+	}
+}
+
+// globMatches reproduces Jekyll's glob-scope behavior without disk I/O:
+// Jekyll runs Dir.glob on the scope path and string-prefix-tests the doc path
+// against each result, so a glob that matches an ancestor directory of the
+// document also applies to the document. We approximate this by matching the
+// pattern against the rel path and each of its ancestor directory paths.
+func globMatches(pattern, rel string) bool {
+	p := rel
+	for {
+		if ok, err := doublestar.Match(pattern, p); err == nil && ok {
+			return true
+		}
+		next := path.Dir(p)
+		if next == p || next == "." {
+			return false
+		}
+		p = next
+	}
+}
+
+// hasPrecedence mirrors Jekyll's FrontMatterDefaults#has_precedence?: the
+// scope with the longer sanitized path wins regardless of config order; on
+// equal length a type-bearing scope beats a typeless one; on a final tie the
+// later (new) entry wins.
+func hasPrecedence(old, new *defaultScope) bool {
+	if old == nil {
+		return true
+	}
+	newLen, oldLen := len(sanitizeScopePath(new.Path)), len(sanitizeScopePath(old.Path))
+	if newLen != oldLen {
+		return newLen > oldLen
+	}
+	switch {
+	case new.Type != "" && old.Type == "":
+		return true
+	case new.Type == "" && old.Type != "":
+		return false
+	default:
+		return true // equal ties: later entry wins
+	}
+}
+
+// sanitizeScopePath strips a single leading "/" from a scope path, matching
+// Jekyll's sanitized_path helper.
+func sanitizeScopePath(p string) string {
+	return strings.TrimPrefix(p, "/")
 }
 
 // RequiresFrontMatter returns a bool indicating whether the file requires front matter in order to recognize as a page.

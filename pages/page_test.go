@@ -78,7 +78,7 @@ func fakePageFromFile(t *testing.T, file string) (Document, error) {
 		siteFake{t, config.Default()},
 		filepath.Join("testdata", file),
 		file,
-		FrontMatter{},
+		func(bool) FrontMatter { return FrontMatter{} },
 	)
 }
 

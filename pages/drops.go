@@ -10,15 +10,17 @@ import (
 
 // ToLiquid is part of the liquid.Drop interface.
 func (d *StaticFile) ToLiquid() interface{} {
-	return liquid.IterationKeyedMap(map[string]interface{}{
+	// Merge the default front matter under the fixed metadata keys so that
+	// defaults like `sitemap` or custom tags surface in `site.static_files`,
+	// while the real attributes (path, name, ...) shadow any same-named default.
+	return liquid.IterationKeyedMap(d.fm.Merged(FrontMatter{
 		"name":          path.Base(d.relPath),
 		"basename":      utils.TrimExt(path.Base(d.relPath)),
 		"path":          d.URL(),
 		"modified_time": d.modTime,
 		"extname":       d.OutputExt(),
-		// de facto:
-		"collection": nil,
-	})
+		"collection":    nil,
+	}))
 }
 
 func (f *file) ToLiquid() interface{} {

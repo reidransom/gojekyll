@@ -80,7 +80,10 @@ func (c *Collection) readPost(path string, rel string, strategy collectionStrate
 		"permalink":  c.PermalinkPattern(),
 	}.Merged(c.cfg.GetFrontMatterDefaults(c.Name, siteRel))
 	strategy.parseFilename(rel, fm)
-	f, err := pages.NewFile(c.site, path, filepath.ToSlash(rel), fm)
+	// Collection static files keep the collection label as their type in
+	// Jekyll, so the same merged defaults apply to both pages and static
+	// files in a collection.
+	f, err := pages.NewFile(c.site, path, filepath.ToSlash(rel), func(bool) pages.FrontMatter { return fm })
 	switch {
 	case err != nil:
 		return err

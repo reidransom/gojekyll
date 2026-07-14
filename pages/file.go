@@ -23,7 +23,11 @@ type file struct {
 // NewFile creates a Page or StaticFile.
 //
 // filename is the absolute filename. relpath is the path relative to the site or collection directory.
-func NewFile(s Site, filename string, relpath string, fm FrontMatter) (Document, error) {
+// fm is a lookup that returns the default front matter for the file; it is
+// called with isStatic=false for a page and isStatic=true for a static file so
+// callers can supply different defaults (e.g. an untyped lookup for static
+// files, mirroring Jekyll's nil-typed static files).
+func NewFile(s Site, filename string, relpath string, fm func(isStatic bool) FrontMatter) (Document, error) {
 	hasFM, err := frontmatter.FileHasFrontMatter(filename)
 	if err != nil {
 		return nil, err
@@ -32,16 +36,18 @@ func NewFile(s Site, filename string, relpath string, fm FrontMatter) (Document,
 	if err != nil {
 		return nil, err
 	}
+	isStatic := !hasFM && s.Config().RequiresFrontMatter(relpath)
+	defaults := fm(isStatic)
 	fields := file{
 		site:      s,
 		filename:  filename,
-		dfm:       fm,
-		fm:        fm,
+		dfm:       defaults,
+		fm:        defaults,
 		modTime:   info.ModTime(),
 		relPath:   relpath,
 		outputExt: s.Config().OutputExt(relpath),
 	}
-	if hasFM || !s.Config().RequiresFrontMatter(relpath) {
+	if !isStatic {
 		return makePage(filename, fields)
 	}
 	fields.permalink = "/" + relpath

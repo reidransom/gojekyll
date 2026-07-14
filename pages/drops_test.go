@@ -13,7 +13,7 @@ import (
 
 func TestStaticFile_ToLiquid(t *testing.T) {
 	site := siteFake{t, config.Default()}
-	page, err := NewFile(site, "testdata/static.html", "static.html", map[string]interface{}{})
+	page, err := NewFile(site, "testdata/static.html", "static.html", func(bool) FrontMatter { return FrontMatter{} })
 	require.NoError(t, err)
 	drop := page.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap)
 
@@ -24,9 +24,25 @@ func TestStaticFile_ToLiquid(t *testing.T) {
 	require.IsType(t, time.Now(), drop["modified_time"])
 }
 
+func TestStaticFile_ToLiquid_defaults(t *testing.T) {
+	site := siteFake{t, config.Default()}
+	page, err := NewFile(site, "testdata/static.html", "static.html", func(bool) FrontMatter {
+		return FrontMatter{"sitemap": false, "image": true, "path": "should-be-shadowed", "name": "should-be-shadowed"}
+	})
+	require.NoError(t, err)
+	drop := page.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap)
+
+	// Default front matter surfaces through the drop.
+	require.Equal(t, false, drop["sitemap"])
+	require.Equal(t, true, drop["image"])
+	// Fixed metadata keys are not overridable by defaults.
+	require.Equal(t, "/static.html", drop["path"])
+	require.Equal(t, "static.html", drop["name"])
+}
+
 func TestPage_ToLiquid_excerpt(t *testing.T) {
 	site := siteFake{t, config.Default()}
-	p, err := NewFile(site, "testdata/excerpt.md", "excerpt.md", map[string]interface{}{})
+	p, err := NewFile(site, "testdata/excerpt.md", "excerpt.md", func(bool) FrontMatter { return FrontMatter{} })
 	require.NoError(t, err)
 
 	t.Run("before render", func(t *testing.T) {
@@ -45,7 +61,7 @@ func TestPage_ToLiquid_excerpt(t *testing.T) {
 
 func TestPage_ToLiquid_name(t *testing.T) {
 	site := siteFake{t, config.Default()}
-	p, err := NewFile(site, "testdata/excerpt.md", "excerpt.md", map[string]interface{}{})
+	p, err := NewFile(site, "testdata/excerpt.md", "excerpt.md", func(bool) FrontMatter { return FrontMatter{} })
 	require.NoError(t, err)
 
 	drop := p.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap)

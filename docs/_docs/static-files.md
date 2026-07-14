@@ -38,19 +38,41 @@ as Jekyll.
 
 ## Front matter values for static files
 
-> **Differs from Jekyll.** Jekyll lets you attach front matter values to
-> static files through the `defaults` configuration (e.g. tag every file
-> under `assets/img` with `image: true`, then filter `site.static_files`
-> with `where`). Jigyll does not — static files expose only the five
-> metadata fields above, and `defaults` values never reach them. To select
-> a group of static files, filter on `path` instead:
+Static files don't have front matter of their own, but you can attach
+default values to them through the `defaults` configuration, just like in
+Jekyll. Because static files outside any collection are **untyped**, only
+scopes **without a `type`** apply to them (see
+[Front matter defaults](/docs/configuration/#front-matter-defaults)).
+
+For example, tag every file under `assets/img` with `image: true`, then filter
+`site.static_files` with `where`:
+
+```yaml
+defaults:
+  - scope:
+      path: "assets/img"
+    values:
+      image: true
+```
 
 {% raw %}
 ```liquid
-{% for file in site.static_files %}
-  {% if file.path contains "/assets/img/" %}
-    {{ file.path }}
-  {% endif %}
+{% assign images = site.static_files | where: "image", true %}
+{% for file in images %}
+  {{ file.path }}
 {% endfor %}
 ```
 {% endraw %}
+
+A common use is to exclude a group of static files from the sitemap:
+
+```yaml
+defaults:
+  - scope: { path: "assets" }
+    values: { sitemap: false }
+```
+
+The default values surface through the static-file drop alongside the
+metadata fields above. The metadata fields (`path`, `name`, `basename`,
+`modified_time`, `extname`, `collection`) are computed from the file itself
+and cannot be overridden by defaults — defaults only add additional keys.

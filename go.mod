@@ -25,6 +25,8 @@ require (
 
 require github.com/gohugoio/hugo-goldmark-extensions/passthrough v0.3.1
 
+require github.com/bmatcuk/doublestar/v4 v4.10.0
+
 require (
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
