@@ -7,6 +7,7 @@ package plugins
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 
@@ -59,7 +60,8 @@ func Install(names []string, site Site) error {
 				return err
 			}
 		} else {
-			fmt.Printf("warning: jigyll does not emulate the %s plugin.\n", name)
+			// stderr so machine-readable stdout (--json) stays clean
+			fmt.Fprintf(os.Stderr, "warning: jigyll does not emulate the %s plugin.\n", name)
 		}
 	}
 	return nil
