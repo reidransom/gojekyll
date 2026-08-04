@@ -130,8 +130,8 @@ func (s *Site) readFiles(dir, base string) error {
 				fmt.Printf("skip (no frontmatter → static file): %s\n", rel)
 			}
 		}
-		s.AddDocument(d, true)
-		if p, ok := d.(Page); ok {
+		accepted := s.registerDocument(d, true)
+		if p, ok := d.(Page); ok && accepted {
 			// Only add pages that don't belong to any collection
 			// Collection pages are in directories starting with '_' (like _posts, _coll1, etc.)
 			// However, explicitly included directories (via include config) should be added
@@ -144,20 +144,28 @@ func (s *Site) readFiles(dir, base string) error {
 	})
 }
 
-// AddDocument adds a document to the site's fields.
-// It ignores unpublished documents unless config.Unpublished is true.
-func (s *Site) AddDocument(d Document, output bool) {
+// registerDocument adds a document to the site's fields and reports whether
+// publication policy accepted it.
+func (s *Site) registerDocument(d Document, output bool) bool {
 	if d.Published() || s.cfg.Unpublished {
 		s.docs = append(s.docs, d)
 		if output {
 			s.Routes[d.URL()] = d
 		}
-	} else {
-		s.diag.FilesUnpublished++
-		if s.cfg.Verbose {
-			fmt.Printf("skip (unpublished): %s\n", d.Source())
-		}
+		return true
 	}
+
+	s.diag.FilesUnpublished++
+	if s.cfg.Verbose {
+		fmt.Printf("skip (unpublished): %s\n", d.Source())
+	}
+	return false
+}
+
+// AddDocument adds a document to the site's fields.
+// It ignores unpublished documents unless config.Unpublished is true.
+func (s *Site) AddDocument(d Document, output bool) {
+	s.registerDocument(d, output)
 }
 
 // ReadCollections reads the pages of the collections named in the site configuration.

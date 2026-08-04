@@ -2,6 +2,7 @@ package site
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +44,51 @@ func TestSite_ToLiquid_pages(t *testing.T) {
 	ps, ok = drop["html_pages"]
 	require.True(t, ok, fmt.Sprintf("pages has type %T", drop["pages"]))
 	require.Len(t, ps, 2)
+}
+
+func TestSitePagesRespectsUnpublishedFlag(t *testing.T) {
+	enabled := true
+	cases := []struct {
+		name   string
+		flags  config.Flags
+		hidden bool
+	}{
+		{name: "default", flags: config.Flags{}, hidden: false},
+		{name: "unpublished", flags: config.Flags{Unpublished: &enabled}, hidden: true},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			site, err := FromDirectory("testdata/unpublished-pages", tt.flags)
+			require.NoError(t, err)
+			require.NoError(t, site.Read())
+
+			drop := site.ToLiquid().(tags.IterationKeyedMap)
+			sitePages, ok := drop["pages"].([]Page)
+			require.True(t, ok, fmt.Sprintf("pages has type %T", drop["pages"]))
+
+			pageURLs := make([]string, 0, len(sitePages))
+			for _, page := range sitePages {
+				pageURLs = append(pageURLs, page.URL())
+			}
+			require.Equal(t, tt.hidden, containsString(pageURLs, "/hidden/"))
+
+			_, routed := site.Routes["/hidden/"]
+			require.Equal(t, tt.hidden, routed)
+
+			rendered := renderRoute(t, site, "/")
+			require.Equal(t, tt.hidden, strings.Contains(rendered, "[Hidden|/hidden/]"))
+		})
+	}
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSite_ToLiquid_posts(t *testing.T) {
