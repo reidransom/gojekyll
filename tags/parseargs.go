@@ -9,7 +9,7 @@ import (
 
 // TODO string escapes
 var argPattern = regexp.MustCompile(`^([^=\s]+)(?:\s+|$)`)
-var optionPattern = regexp.MustCompile(`^(\w+)=("[^"]*"|'[^']*'|[^'"\s]*)(?:\s+|$)`)
+var optionPattern = regexp.MustCompile(`^(\w+)\s*=\s*("[^"]*"|'[^']*'|[^'"\s]*)(?:\s+|$)`)
 
 // ParsedArgs holds the parsed arguments from ParseArgs.
 type ParsedArgs struct {
@@ -34,16 +34,19 @@ func ParseArgs(argsline string) (*ParsedArgs, error) {
 		am := argPattern.FindStringSubmatch(r)
 		om := optionPattern.FindStringSubmatch(r)
 		switch {
-		case am != nil:
-			args.Args = append(args.Args, am[1])
-			i = len(am[0])
 		case om != nil:
 			k, v, quoted := om[1], om[2], false
-			if v[0] == '\'' || v[0] == '"' {
+			if v == "" && len(om[0]) < len(r) {
+				return nil, fmt.Errorf("parse error in tag parameters %q", argsline)
+			}
+			if v != "" && (v[0] == '\'' || v[0] == '"') {
 				v, quoted = v[1:len(v)-1], true
 			}
 			args.Options[k] = optionRecord{v, quoted}
 			i = len(om[0])
+		case am != nil:
+			args.Args = append(args.Args, am[1])
+			i = len(am[0])
 		default:
 			return nil, fmt.Errorf("parse error in tag parameters %q", argsline)
 		}

@@ -32,3 +32,62 @@ func TestFilters(t *testing.T) {
 		})
 	}
 }
+
+func TestParseArgsOptionWhitespace(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		options map[string]optionRecord
+	}{
+		{
+			name:  "no whitespace",
+			input: `filename color_scheme=include.color_scheme`,
+			options: map[string]optionRecord{
+				"color_scheme": {value: "include.color_scheme"},
+			},
+		},
+		{
+			name:  "whitespace before equals",
+			input: `filename color_scheme =include.color_scheme`,
+			options: map[string]optionRecord{
+				"color_scheme": {value: "include.color_scheme"},
+			},
+		},
+		{
+			name:  "whitespace after equals",
+			input: `filename color_scheme= include.color_scheme`,
+			options: map[string]optionRecord{
+				"color_scheme": {value: "include.color_scheme"},
+			},
+		},
+		{
+			name:  "whitespace around equals",
+			input: `filename color_scheme = include.color_scheme`,
+			options: map[string]optionRecord{
+				"color_scheme": {value: "include.color_scheme"},
+			},
+		},
+		{
+			name:  "mixed options and quoted value",
+			input: `filename color_scheme = include.color_scheme label= "dark mode"`,
+			options: map[string]optionRecord{
+				"color_scheme": {value: "include.color_scheme"},
+				"label":        {value: "dark mode", quoted: true},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual, err := ParseArgs(test.input)
+			require.NoError(t, err)
+			require.Equal(t, []string{"filename"}, actual.Args)
+			require.Equal(t, test.options, actual.Options)
+		})
+	}
+
+	t.Run("malformed spaced assignment", func(t *testing.T) {
+		_, err := ParseArgs(`filename color_scheme = "unterminated`)
+		require.EqualError(t, err, `parse error in tag parameters "filename color_scheme = \"unterminated"`)
+	})
+}

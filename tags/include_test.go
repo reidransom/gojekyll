@@ -39,6 +39,25 @@ func TestIncludeTag(t *testing.T) {
 	require.Equal(t, "Note: This is my sample note.", strings.TrimSpace(s))
 }
 
+func TestIncludeTagOptionWhitespace(t *testing.T) {
+	engine := liquid.NewEngine()
+	cfg := config.Default()
+	cfg.Source = "testdata"
+	AddJekyllTags(engine, &cfg, []string{"testdata/_includes"}, func(string) (string, bool) {
+		return "", false
+	})
+	bindings := map[string]interface{}{
+		"include": map[string]interface{}{"color_scheme": "dark"},
+	}
+
+	s, err := engine.ParseAndRenderString(
+		`{% include note.html content = include.color_scheme %}`,
+		bindings,
+	)
+	require.NoError(t, err)
+	require.Equal(t, "Note: dark", strings.TrimSpace(s))
+}
+
 func TestCircularInclude(t *testing.T) {
 	engine := liquid.NewEngine()
 	cfg := config.Default()
