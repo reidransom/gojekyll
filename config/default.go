@@ -48,6 +48,10 @@ plugins:   []
 excerpt_separator: "\n\n"
 incremental: false
 
+# Liquid
+liquid:
+  strict_filters: false
+
 # Serving
 detach:  false
 port:    4000

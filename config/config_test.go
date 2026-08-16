@@ -18,6 +18,23 @@ func TestDefaultConfig(t *testing.T) {
 	require.Equal(t, "_layouts", c.LayoutsDir)
 }
 
+func TestConfig_LiquidStrictFilters(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want bool
+	}{
+		{name: "omitted", want: false},
+		{name: "false", src: "liquid:\n  strict_filters: false", want: false},
+		{name: "true", src: "liquid:\n  strict_filters: true", want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := Default()
+			require.NoError(t, Unmarshal([]byte(tc.src), &c))
+			require.Equal(t, tc.want, c.Liquid.StrictFilters)
+		})
+	}
+}
 func TestConfig_Map(t *testing.T) {
 	c := Default()
 	require.NoError(t, Unmarshal([]byte("kramdown:\n  toc_levels: \"2..3\""), &c))

@@ -45,6 +45,11 @@ type Config struct {
 		// TODO Style string // compressed
 	}
 
+	// Liquid rendering
+	Liquid struct {
+		StrictFilters bool `yaml:"strict_filters"`
+	}
+
 	// Serving
 	Host        string
 	Port        int
