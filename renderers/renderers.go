@@ -70,14 +70,14 @@ func (p *Manager) TemplateEngine() *liquid.Engine {
 	return p.liquidEngine
 }
 
-// Render sends content through SASS and/or Liquid -> Markdown
+// Render sends content through Liquid, followed by Sass or Markdown when selected by its extension.
 func (p *Manager) Render(w io.Writer, src []byte, vars liquid.Bindings, filename string, lineNo int) error {
-	if p.cfg.IsSASSPath(filename) {
-		return p.WriteSass(w, src)
-	}
 	src, err := p.RenderTemplate(src, vars, filename, lineNo)
 	if err != nil {
 		return err
+	}
+	if p.cfg.IsSASSPath(filename) {
+		return p.WriteSass(w, src)
 	}
 	if p.cfg.IsMarkdown(filename) {
 		src, err = renderMarkdownWithOptions(src, p.getTOCOptions())
