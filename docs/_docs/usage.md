@@ -7,11 +7,12 @@ description: Jigyll's command-line interface.
 Jigyll's CLI mirrors Jekyll's most-used commands:
 
 ```bash
-jigyll build       # build the site in the current directory into _site
-jigyll serve       # serve at http://localhost:4000; reload on changes
-jigyll clean       # remove the generated _site directory
-jigyll help        # list commands
-jigyll help build  # help for a specific command
+jigyll new ./my-site # create a blank site
+jigyll build         # build the site in the current directory into _site
+jigyll serve         # serve at http://localhost:4000; reload on changes
+jigyll clean         # remove the generated _site directory
+jigyll help          # list commands
+jigyll help build    # help for a specific command
 ```
 
 ## Common flags
@@ -38,6 +39,13 @@ build in production mode.
 
 Renders the site to the destination directory. `--dry-run` (`-n`) builds
 without writing.
+
+## `new`
+
+Creates a minimal, runnable blank site at `PATH`. Use
+`jigyll new PATH --theme GIT_URL` to clone a theme into `_theme/` and use it
+for the new site. See [Start a new site](/docs/new/) for the generated files
+and theme requirements.
 
 ## `serve`
 
@@ -69,5 +77,5 @@ Builds the site and serves it locally, rebuilding on change.
 
 ## Not implemented
 
-Jekyll's `new`, `new-theme`, `doctor`, and `import` commands don't exist, nor
-do the `--lsi` and `--limit-posts` flags.
+Jekyll's `new-theme`, `doctor`, and `import` commands don't exist, nor do the
+`--lsi` and `--limit-posts` flags.

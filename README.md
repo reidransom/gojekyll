@@ -57,8 +57,9 @@ live reload.
 ## Usage
 
 ```bash
-jigyll build       # builds the site in the current directory into _site
-jigyll serve       # serve the app at http://localhost:4000; reload on changes
+jigyll new ./my-site # creates a blank, runnable site
+jigyll build         # builds the site in the current directory into _site
+jigyll serve         # serve the app at http://localhost:4000; reload on changes
 jigyll help
 jigyll help build
 ```
@@ -144,11 +145,10 @@ docker run --user $UID:$GID -v $PWD:/app --pull always -p 4000:4000 --rm -it rei
    `sass` executable on your PATH (the [Quick Install](#quick-install-macos--linux)
    script sets this up for you; otherwise see [From Source](#from-source) for how to
    install it).
-2. [Optional] **Themes**. To use a theme, you need to install Ruby and
-   [bundler](http://bundler.io/). Create a `Gemfile` that lists the theme., and
-   run `bundle install`. The [Jekyll theme
-   instructions](https://jekyllrb.com/docs/themes/) provide more detail, and
-   should work for Jigyll too.
+2. [Optional] **Themes**. Scaffold a site and vendor a theme without Ruby:
+   `jigyll new my-site --theme GIT_URL`. Jigyll clones the theme below
+   `_theme/`; Bundler is only a fallback for existing Jekyll projects that
+   already resolve themes from a `Gemfile`.
 
 ### From Source
 
@@ -158,8 +158,8 @@ Pre-requisites:
    [download](https://golang.org/doc/install#tarball).
 2. Install the Dart Sass executable:
    - On macOS: `brew install sass/sass/sass`
-   - On Linux: see item (2) under [Binary Downloads](#binary-downloads) or install via your package manager.
-3. See item (2) under [Binary Downloads](#binary-downloads) for theme support.
+3. Theme scaffolding needs `git`; it does not require Ruby, Bundler, or a
+   `Gemfile`.
 
 Then run:
 
@@ -286,7 +286,8 @@ Muzukashii:
     - [x] `--incremental`, `–watch`, `--force_polling`
     - [ ] `--baseurl`, `--config`
     - [ ] `--detach`, `--ssl`-\* – not planned
-  - [ ] `doctor`, `import`, `new`, `new-theme` – not planned
+  - [x] `new`
+  - [ ] `doctor`, `import`, `new-theme` – not planned
 - [x] Windows
 
 ## Troubleshooting

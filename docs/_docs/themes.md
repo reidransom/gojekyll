@@ -44,6 +44,19 @@ git clone https://github.com/jekyll/minima.git _theme/minima
 
 Then set `theme: minima` in your site's `_config.yml`.
 
+### Scaffolding with a local theme
+
+`jigyll new` can clone and select a theme in one step:
+
+```sh
+jigyll new my-site --theme GIT_URL
+```
+
+This clones the repository to `_theme/<theme-name>/` and writes
+`theme: <theme-name>` to `my-site/_config.yml`. The generated site has no local
+`_layouts/default.html`, so the selected theme's layout is used. The URL must
+resolve to a theme directory name and the repository must provide that layout.
+
 ## What a theme provides
 
 Jigyll reads these directories from the theme, with your site's own files

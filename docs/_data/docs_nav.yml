@@ -4,6 +4,8 @@
       link: /docs/
     - title: Installation
       link: /docs/installation/
+    - title: Start a New Site
+      link: /docs/new/
 - title: Build
   docs:
     - title: Usage

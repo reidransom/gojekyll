@@ -1,0 +1,200 @@
+package commands
+
+import (
+	"embed"
+	"errors"
+	"fmt"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"unicode"
+)
+
+var (
+	new      = app.Command("new", "Create a new Jigyll site")
+	newPath  = new.Arg("PATH", "Directory for the new site").Required().String()
+	newTheme = new.Flag("theme", "Git URL of a theme to install").String()
+)
+
+//go:embed starter/_config.yml starter/_layouts/default.html starter/index.md starter/.gitignore
+var starterFiles embed.FS
+
+func newCommand() error {
+	return scaffoldNewSite(*newPath, *newTheme)
+}
+
+func scaffoldNewSite(path, themeURL string) error {
+	target, existed, err := resolveNewSiteTarget(path)
+	if err != nil {
+		return err
+	}
+
+	themeName := ""
+	if themeURL != "" {
+		themeName, err = themeDirectoryName(themeURL)
+		if err != nil {
+			return err
+		}
+	}
+
+	parent := filepath.Dir(target)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return fmt.Errorf("create parent directory for %q: %w", target, err)
+	}
+
+	staging, err := os.MkdirTemp(parent, "."+filepath.Base(target)+".jigyll-new-*")
+	if err != nil {
+		return fmt.Errorf("create staging directory for %q: %w", target, err)
+	}
+	defer os.RemoveAll(staging)
+
+	if err := writeStarterSite(staging, themeName); err != nil {
+		return err
+	}
+	if themeURL != "" {
+		if err := cloneTheme(staging, themeURL, themeName); err != nil {
+			return err
+		}
+	}
+
+	if existed {
+		if err := os.Remove(target); err != nil {
+			return fmt.Errorf("replace empty target directory %q: %w", target, err)
+		}
+	}
+	if err := os.Rename(staging, target); err != nil {
+		return fmt.Errorf("publish new site at %q: %w", target, err)
+	}
+	return nil
+}
+
+func resolveNewSiteTarget(path string) (string, bool, error) {
+	target, err := filepath.Abs(path)
+	if err != nil {
+		return "", false, fmt.Errorf("resolve target path %q: %w", path, err)
+	}
+	if target == filepath.Dir(target) {
+		return "", false, errors.New("target directory cannot be the filesystem root")
+	}
+
+	info, err := os.Lstat(target)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return target, false, nil
+	case err != nil:
+		return "", false, fmt.Errorf("inspect target directory %q: %w", target, err)
+	case info.Mode()&os.ModeSymlink != 0 || !info.IsDir():
+		return "", false, fmt.Errorf("target path %q is not a directory", target)
+	}
+
+	entries, err := os.ReadDir(target)
+	if err != nil {
+		return "", false, fmt.Errorf("read target directory %q: %w", target, err)
+	}
+	if len(entries) != 0 {
+		return "", false, fmt.Errorf("target directory %q is not empty", target)
+	}
+	return target, true, nil
+}
+
+func writeStarterSite(root, themeName string) error {
+	for _, dir := range []string{"_data", "_drafts", "_includes", "_layouts", "_posts", "_sass", "assets"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
+			return fmt.Errorf("create starter directory %q: %w", dir, err)
+		}
+	}
+
+	config, err := starterFiles.ReadFile("starter/_config.yml")
+	if err != nil {
+		return fmt.Errorf("read embedded config: %w", err)
+	}
+	if themeName != "" {
+		config = append(config, "theme: "+themeName+"\n"...)
+	}
+	if err := writeStarterFile(root, "_config.yml", config); err != nil {
+		return err
+	}
+	if err := writeEmbeddedStarterFile(root, "index.md"); err != nil {
+		return err
+	}
+	if err := writeEmbeddedStarterFile(root, ".gitignore"); err != nil {
+		return err
+	}
+	if themeName == "" {
+		if err := writeEmbeddedStarterFile(root, "_layouts/default.html"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeEmbeddedStarterFile(root, path string) error {
+	content, err := starterFiles.ReadFile("starter/" + path)
+	if err != nil {
+		return fmt.Errorf("read embedded starter file %q: %w", path, err)
+	}
+	return writeStarterFile(root, path, content)
+}
+
+func writeStarterFile(root, path string, content []byte) error {
+	if err := os.WriteFile(filepath.Join(root, path), content, 0o644); err != nil {
+		return fmt.Errorf("write starter file %q: %w", path, err)
+	}
+	return nil
+}
+
+func cloneTheme(root, themeURL, themeName string) error {
+	themeDir := filepath.Join(root, "_theme", themeName)
+	if err := os.MkdirAll(filepath.Dir(themeDir), 0o755); err != nil {
+		return fmt.Errorf("create theme directory: %w", err)
+	}
+
+	command := exec.Command("git", "clone", "--depth", "1", themeURL, themeDir)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("clone theme %q: %w: %s", themeURL, err, strings.TrimSpace(string(output)))
+	}
+
+	layout := filepath.Join(themeDir, "_layouts", "default.html")
+	info, err := os.Stat(layout)
+	if err != nil {
+		return fmt.Errorf("theme %q does not provide _layouts/default.html: %w", themeName, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("theme %q has a non-file _layouts/default.html", themeName)
+	}
+	return nil
+}
+
+func themeDirectoryName(gitURL string) (string, error) {
+	path := gitURL
+	if strings.Contains(gitURL, "://") || strings.HasPrefix(gitURL, "file:") {
+		parsed, err := url.Parse(gitURL)
+		if err != nil {
+			return "", fmt.Errorf("parse theme URL %q: %w", gitURL, err)
+		}
+		path = parsed.Path
+	}
+	path = strings.TrimRight(path, "/\\")
+	name := path[strings.LastIndexAny(path, "/\\:")+1:]
+	name = strings.TrimSuffix(name, ".git")
+	if !isSafeThemeDirectoryName(name) {
+		return "", fmt.Errorf("theme URL %q does not yield a safe directory name", gitURL)
+	}
+	return name, nil
+}
+
+func isSafeThemeDirectoryName(name string) bool {
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	for _, char := range name {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) || char == '-' || char == '_' || char == '.' {
+			continue
+		}
+		return false
+	}
+	return true
+}

@@ -30,8 +30,9 @@ installation:
 
 usage:
   status: replaced
-  summary: "No `new`, `doctor`, or `import` commands, but extra ones Jekyll
-            lacks: `plugins`, `render`, `routes`, `variables`, and `benchmark`.
+  summary: "`new` creates a blank site directly; its themed form requires a
+            Git URL. There are no `doctor` or `import` commands. Jigyll adds
+            `plugins`, `render`, `routes`, `variables`, and `benchmark`.
             `serve` renders in memory (nothing is written to disk) and live
             reload is always on."
   details: /docs/differences/#replaced
