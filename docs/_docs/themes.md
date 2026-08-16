@@ -23,6 +23,7 @@ theme: minima
 > 1. **A local `_theme` folder** — if `<source>/_theme/<theme-name>/`
 >    exists, it is used. This is the Jigyll-native way to vendor a theme:
 >    copy (or submodule) the theme's files there.
+
 > 2. **Bundler fallback** — otherwise, if `bundle` is on your `PATH`,
 >    Jigyll runs `bundle show <theme-name>` and uses the gem's directory.
 >    This lets an existing Jekyll project with a `Gemfile` keep working,
@@ -31,6 +32,17 @@ theme: minima
 > If neither works, the build fails with an error. The
 > `jekyll-remote-theme` plugin (`remote_theme:` key) is **not supported** —
 > vendor the theme into `_theme/` instead.
+
+### Installing a local theme
+
+For example, install Minima as a local theme:
+
+```sh
+mkdir -p _theme
+git clone https://github.com/jekyll/minima.git _theme/minima
+```
+
+Then set `theme: minima` in your site's `_config.yml`.
 
 ## What a theme provides
 
