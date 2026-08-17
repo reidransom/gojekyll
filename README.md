@@ -395,3 +395,5 @@ MIT
 [golangci-lint-svg]: https://github.com/reidransom/jigyll/actions/workflows/golangci-lint.yml/badge.svg
 [go-report-card-url]: https://goreportcard.com/report/github.com/reidransom/jigyll
 [go-report-card-svg]: https://goreportcard.com/badge/github.com/reidransom/jigyll
+
+x
