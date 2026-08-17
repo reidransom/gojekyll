@@ -96,6 +96,9 @@ func (p *Manager) copySASSFiles(src, dst string, h io.Writer) error {
 
 // SassIncludePaths returns an array of sass include directories.
 func (p *Manager) SassIncludePaths() []string {
+	if p.sassTempDir == "" {
+		return nil
+	}
 	return []string{p.sassTempDir}
 }
 

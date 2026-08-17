@@ -52,10 +52,10 @@ type Options struct {
 // New makes a rendering manager.
 func New(c config.Config, options Options) (*Manager, error) {
 	p := Manager{Options: options, cfg: c}
-	p.liquidEngine = p.makeLiquidEngine()
 	if err := p.copySASSFileIncludes(); err != nil {
 		return nil, err
 	}
+	p.liquidEngine = p.makeLiquidEngine()
 	return &p, nil
 }
 
@@ -184,7 +184,7 @@ func (p *Manager) makeLiquidEngine() *liquid.Engine {
 	if !p.cfg.Liquid.StrictFilters {
 		engine.LaxFilters()
 	}
-	filters.AddJekyllFilters(engine, &p.cfg)
+	filters.AddJekyllFilters(engine, &p.cfg, p.SassIncludePaths()...)
 	tags.AddJekyllTags(engine, &p.cfg, dirs, p.RelativeFilenameToURL)
 	return engine
 }

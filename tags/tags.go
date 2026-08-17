@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/reidransom/jigyll/config"
+	"github.com/reidransom/jigyll/utils"
 	"github.com/reidransom/liquid"
 	"github.com/reidransom/liquid/render"
 )
@@ -14,9 +15,15 @@ type LinkTagHandler func(string) (string, bool)
 
 // AddJekyllTags adds the Jekyll tags to the Liquid engine.
 func AddJekyllTags(e *liquid.Engine, c *config.Config, includeDirs []string, lh LinkTagHandler) {
-	tc := tagContext{c, includeDirs, lh}
+	tc := tagContext{cfg: c, includeDirs: includeDirs, lh: lh}
+	if utils.StringArrayContains(c.Plugins, "jekyll-include-cache") {
+		tc.includeCache = newIncludeCache()
+	}
 	e.RegisterBlock("highlight", highlightTag)
 	e.RegisterTag("include", tc.includeTag)
+	if tc.includeCache != nil {
+		e.RegisterTag("include_cached", tc.includeCachedTag)
+	}
 	e.RegisterTag("include_relative", tc.includeRelativeTag)
 	e.RegisterTag("link", tc.linkTag)
 	e.RegisterTag("post_url", tc.postURLTag)
@@ -24,9 +31,10 @@ func AddJekyllTags(e *liquid.Engine, c *config.Config, includeDirs []string, lh 
 
 // tagContext provides the context to a tag renderer.
 type tagContext struct {
-	cfg         *config.Config
-	includeDirs []string
-	lh          LinkTagHandler
+	cfg          *config.Config
+	includeDirs  []string
+	lh           LinkTagHandler
+	includeCache *includeCache
 }
 
 // CreateUnimplementedTag creates a tag definition that prints a warning the first

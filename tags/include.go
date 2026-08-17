@@ -8,9 +8,63 @@ import (
 	"github.com/reidransom/liquid/render"
 )
 
-func (tc tagContext) includeTag(rc render.Context) (s string, err error) {
+type includeRequest struct {
+	filename string
+	include  map[string]interface{}
+}
+
+type resolvedInclude struct {
+	filename string
+	include  map[string]interface{}
+	stack    []string
+}
+
+func (tc tagContext) includeTag(rc render.Context) (string, error) {
+	request, err := parseIncludeRequest(rc)
+	if err != nil {
+		return "", err
+	}
+	return tc.renderInclude(request, rc)
+}
+
+func (tc tagContext) includeRelativeTag(rc render.Context) (string, error) {
+	request, err := parseIncludeRequest(rc)
+	if err != nil {
+		return "", err
+	}
+	resolved, err := request.resolve(path.Dir(rc.SourceFile()), rc)
+	if err != nil {
+		return "", err
+	}
+	return resolved.render(rc)
+}
+
+func parseIncludeRequest(rc render.Context) (includeRequest, error) {
+	argsline, err := rc.ExpandTagArg()
+	if err != nil {
+		return includeRequest{}, err
+	}
+	args, err := ParseArgs(argsline)
+	if err != nil {
+		return includeRequest{}, err
+	}
+	if len(args.Args) != 1 {
+		return includeRequest{}, fmt.Errorf("parse error")
+	}
+	include, err := args.EvalOptions(rc)
+	if err != nil {
+		return includeRequest{}, err
+	}
+	return includeRequest{filename: args.Args[0], include: include}, nil
+}
+
+func (tc tagContext) renderInclude(request includeRequest, rc render.Context) (s string, err error) {
 	for _, dir := range tc.includeDirs {
-		s, err = includeFromDir(dir, rc)
+		var resolved resolvedInclude
+		resolved, err = request.resolve(dir, rc)
+		if err == nil {
+			s, err = resolved.render(rc)
+		}
 		if err == nil {
 			return
 		}
@@ -18,48 +72,27 @@ func (tc tagContext) includeTag(rc render.Context) (s string, err error) {
 	return
 }
 
-func (tc tagContext) includeRelativeTag(rc render.Context) (string, error) {
-	// TODO "Note that you cannot use the ../ syntax"
-	return includeFromDir(path.Dir(rc.SourceFile()), rc)
-}
-
-func includeFromDir(dir string, rc render.Context) (string, error) {
-	argsline, err := rc.ExpandTagArg()
-	if err != nil {
-		return "", err
-	}
-	args, err := ParseArgs(argsline)
-	if err != nil {
-		return "", err
-	}
-	if len(args.Args) != 1 {
-		return "", fmt.Errorf("parse error")
-	}
-	include, err := args.EvalOptions(rc)
-	if err != nil {
-		return "", err
-	}
-	filename := filepath.Join(dir, args.Args[0])
-
-	// Check for circular includes
+func (r includeRequest) resolve(dir string, rc render.Context) (resolvedInclude, error) {
+	filename := filepath.Join(dir, r.filename)
 	includeStack := getIncludeStack(rc)
 	for _, includedFile := range includeStack {
 		if includedFile == filename {
-			return "", fmt.Errorf("include loop detected: %s", filename)
+			return resolvedInclude{}, fmt.Errorf("include loop detected: %s", filename)
 		}
 	}
-
-	// Add current file to stack and render; copy so sibling includes
-	// don't share the stack's backing array
-	newStack := append(append([]string(nil), includeStack...), filename)
-	vars := map[string]interface{}{
-		"include":           include,
-		"__include_stack__": newStack,
-	}
-	return rc.RenderFile(filename, vars)
+	stack := append(append([]string(nil), includeStack...), filename)
+	return resolvedInclude{filename: filename, include: r.include, stack: stack}, nil
 }
 
-// getIncludeStack retrieves the current include stack from the render context
+func (r resolvedInclude) render(rc render.Context) (string, error) {
+	vars := map[string]interface{}{
+		"include":           r.include,
+		"__include_stack__": r.stack,
+	}
+	return rc.RenderFile(r.filename, vars)
+}
+
+// getIncludeStack retrieves the current include stack from the render context.
 func getIncludeStack(rc render.Context) []string {
 	if stack := rc.Get("__include_stack__"); stack != nil {
 		if s, ok := stack.([]string); ok {

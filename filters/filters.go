@@ -10,12 +10,9 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
-	sass "github.com/bep/godartsass/v2"
 	"github.com/reidransom/jigyll/config"
-	"github.com/reidransom/jigyll/internal/sasserrors"
 	"github.com/reidransom/jigyll/utils"
 	"github.com/reidransom/liquid"
 	"github.com/reidransom/liquid/evaluator"
@@ -26,8 +23,9 @@ import (
 	gmhtml "github.com/yuin/goldmark/renderer/html"
 )
 
-// AddJekyllFilters adds the Jekyll filters to the Liquid engine.
-func AddJekyllFilters(e *liquid.Engine, c *config.Config) {
+// AddJekyllFilters adds the Jekyll filters to the Liquid engine. Sass include
+// paths are used to resolve imports in strings passed through scssify.
+func AddJekyllFilters(e *liquid.Engine, c *config.Config, sassIncludePaths ...string) {
 	// array filters
 	e.RegisterFilter("array_to_sentence_string", arrayToSentenceStringFilter)
 	// TODO doc neither Liquid nor Jekyll docs this, but it appears to be present
@@ -131,7 +129,9 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config) {
 	// string escapes
 	e.RegisterFilter("cgi_escape", url.QueryEscape)
 	e.RegisterFilter("sassify", sassifyFilter)
-	e.RegisterFilter("scssify", scssifyFilter)
+	e.RegisterFilter("scssify", func(s string) (string, error) {
+		return scssifyFilter(s, sassIncludePaths)
+	})
 	e.RegisterFilter("smartify", smartifyFilter)
 	e.RegisterFilter("uri_escape", func(s string) string {
 		return regexp.MustCompile(`\?(.+?)=([^&]*)(?:\&(.+?)=([^&]*))*`).ReplaceAllStringFunc(s, func(m string) string {
@@ -342,43 +342,4 @@ func markdownify(md []byte) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// SASS transpiler singleton for the scssify filter. dart-sass is resolved from
-// PATH (sass.Options{}); see renderers.getSassTranspiler for the build-side copy.
-var (
-	scssifyTranspiler     *sass.Transpiler
-	scssifyTranspilerErr  error
-	scssifyTranspilerOnce sync.Once
-)
-
-func getScssifyTranspiler() (*sass.Transpiler, error) {
-	scssifyTranspilerOnce.Do(func() {
-		scssifyTranspiler, scssifyTranspilerErr = sass.Start(sass.Options{})
-		scssifyTranspilerErr = sasserrors.Enhance(scssifyTranspilerErr)
-	})
-	return scssifyTranspiler, scssifyTranspilerErr
-}
-
-func sassifyFilter(s string) (string, error) {
-	comp, err := getScssifyTranspiler()
-	if err != nil {
-		return "", err
-	}
-	res, err := comp.Execute(sass.Args{
-		Source:       s,
-		SourceSyntax: sass.SourceSyntaxSASS,
-	})
-	return res.CSS, err
-}
-
-func scssifyFilter(s string) (string, error) {
-	comp, err := getScssifyTranspiler()
-	if err != nil {
-		return "", err
-	}
-	res, err := comp.Execute(sass.Args{
-		Source: s,
-	})
-	return res.CSS, err
 }
