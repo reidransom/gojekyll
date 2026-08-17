@@ -3,13 +3,13 @@ package tags
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/reidransom/liquid/render"
 )
 
-// TODO string escapes
 var argPattern = regexp.MustCompile(`^([^=\s]+)(?:\s+|$)`)
-var optionPattern = regexp.MustCompile(`^(\w+)\s*=\s*("[^"]*"|'[^']*'|[^'"\s]*)(?:\s+|$)`)
+var optionPattern = regexp.MustCompile(`^(\w+)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^'"\s]*)(?:\s+|$)`)
 
 // ParsedArgs holds the parsed arguments from ParseArgs.
 type ParsedArgs struct {
@@ -40,7 +40,7 @@ func ParseArgs(argsline string) (*ParsedArgs, error) {
 				return nil, fmt.Errorf("parse error in tag parameters %q", argsline)
 			}
 			if v != "" && (v[0] == '\'' || v[0] == '"') {
-				v, quoted = v[1:len(v)-1], true
+				v, quoted = decodeQuotedOption(v), true
 			}
 			args.Options[k] = optionRecord{v, quoted}
 			i = len(om[0])
@@ -52,6 +52,16 @@ func ParseArgs(argsline string) (*ParsedArgs, error) {
 		}
 	}
 	return &args, nil
+}
+
+func decodeQuotedOption(token string) string {
+	quote := token[0]
+	value := token[1 : len(token)-1]
+	if quote == '"' {
+		return strings.ReplaceAll(value, `\"`, `"`)
+	}
+
+	return strings.ReplaceAll(value, `\'`, `'`)
 }
 
 // EvalOptions evaluates unquoted options.

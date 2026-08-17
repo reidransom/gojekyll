@@ -36,6 +36,20 @@ func TestLiquidFilterStrictness(t *testing.T) {
 	})
 }
 
+func TestLiquidRangeAcceptsArithmeticResult(t *testing.T) {
+	p := Manager{cfg: config.Default()}
+	tpl, err := p.makeLiquidEngine().ParseTemplateLocation(
+		[]byte(`{% assign end = 6 | minus: 1 | divided_by: 5 %}{% for i in (1..end) %}{{ i }}{% endfor %}`),
+		"test.html",
+		1,
+	)
+	require.NoError(t, err)
+
+	out, err := tpl.Render(liquid.Bindings{})
+	require.NoError(t, err)
+	require.Equal(t, "1", string(out))
+}
+
 func renderUndefinedFilter(c config.Config) ([]byte, error) {
 	p := Manager{cfg: c}
 	tpl, err := p.makeLiquidEngine().ParseTemplateLocation([]byte(undefinedFilterTemplate), "test.html", 1)

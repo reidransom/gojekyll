@@ -91,3 +91,59 @@ func TestParseArgsOptionWhitespace(t *testing.T) {
 		require.EqualError(t, err, `parse error in tag parameters "filename color_scheme = \"unterminated"`)
 	})
 }
+
+func TestParseArgsEscapedQuotes(t *testing.T) {
+	const anchorBody = `<svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg>`
+	args, err := ParseArgs(
+		`vendor/anchor_headings.html html=content beforeHeading="true" anchorBody="<svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><use xlink:href=\"#svg-link\"></use></svg>" anchorClass="anchor-heading" anchorAttrs="aria-labelledby=\"%html_id%\""`,
+	)
+	require.NoError(t, err)
+	require.Equal(t, []string{"vendor/anchor_headings.html"}, args.Args)
+	require.Equal(t, optionRecord{value: anchorBody, quoted: true}, args.Options["anchorBody"])
+	require.Equal(t, optionRecord{value: `aria-labelledby="%html_id%"`, quoted: true}, args.Options["anchorAttrs"])
+	require.Equal(t, optionRecord{value: "anchor-heading", quoted: true}, args.Options["anchorClass"])
+
+	tests := []struct {
+		name  string
+		input string
+		key   string
+		value string
+	}{
+		{
+			name:  "double quoted delimiter",
+			input: `value="a \"quote\"" following="value"`,
+			key:   "value",
+			value: `a "quote"`,
+		},
+		{
+			name:  "single quoted delimiter",
+			input: `value='a \'quote\'' following='value'`,
+			key:   "value",
+			value: `a 'quote'`,
+		},
+		{
+			name:  "unrelated backslash sequences",
+			input: `value="keep \n and \\ unchanged" following="value"`,
+			key:   "value",
+			value: `keep \n and \\ unchanged`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual, err := ParseArgs(test.input)
+			require.NoError(t, err)
+			require.Equal(t, optionRecord{value: test.value, quoted: true}, actual.Options[test.key])
+			require.Equal(t, optionRecord{value: "value", quoted: true}, actual.Options["following"])
+		})
+	}
+
+	for _, input := range []string{
+		`value="unterminated`,
+		`value="escaped closing quote \"`,
+		`value="quoted"trailing`,
+	} {
+		_, err := ParseArgs(input)
+		require.EqualError(t, err, fmt.Sprintf("parse error in tag parameters %q", input))
+	}
+}

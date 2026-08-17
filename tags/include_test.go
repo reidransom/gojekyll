@@ -39,6 +39,23 @@ func TestIncludeTag(t *testing.T) {
 	require.Equal(t, "Note: This is my sample note.", strings.TrimSpace(s))
 }
 
+func TestIncludeTagEscapedQuotes(t *testing.T) {
+	engine := liquid.NewEngine()
+	cfg := config.Default()
+	cfg.Source = "testdata"
+	AddJekyllTags(engine, &cfg, []string{"testdata/_includes"}, func(string) (string, bool) {
+		return "", false
+	})
+
+	s, err := engine.ParseAndRenderString(
+		`{% include note.html content="<svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"></svg>" following="value" %}`,
+		map[string]interface{}{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, `Note: <svg viewBox="0 0 16 16" aria-hidden="true"></svg>`, strings.TrimSpace(s))
+	require.NotContains(t, s, `\"`)
+}
+
 func TestIncludeTagOptionWhitespace(t *testing.T) {
 	engine := liquid.NewEngine()
 	cfg := config.Default()
