@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/reidransom/jigyll/plugins"
 	"github.com/reidransom/jigyll/utils"
@@ -59,14 +60,23 @@ func (s *Site) WriteFiles() (count int, err error) {
 	return count, err
 }
 
+func destinationRelativePath(d Document) string {
+	rel := d.URL()
+	if d.IsStatic() || filepath.Ext(rel) != "" {
+		return rel
+	}
+
+	indexExt := ".html"
+	if strings.HasSuffix(rel, "/") && d.OutputExt() != "" {
+		indexExt = d.OutputExt()
+	}
+	return filepath.Join(rel, "index"+indexExt)
+}
+
 // WriteDoc writes a document to the destination directory.
 func (s *Site) WriteDoc(d Document) error {
 	from := d.Source()
-	rel := d.URL()
-	if !d.IsStatic() && filepath.Ext(rel) == "" {
-		rel = filepath.Join(rel, "index.html")
-	}
-	to := filepath.Join(s.DestDir(), rel)
+	to := filepath.Join(s.DestDir(), destinationRelativePath(d))
 	if s.cfg.Verbose {
 		fmt.Println("create", to, "from", d.Source())
 	}
