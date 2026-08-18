@@ -38,9 +38,9 @@ var filterTests = []struct{ in, expected string }{
 	{`{{ site.members | where_exp: "item", "item.name contains 'Al'" | map: "name" | join }}`, "Alonzo Alan"},
 
 	{`{{ page.tags | push: 'Spokane' | join }}`, "Seattle Tacoma Spokane"},
-	{`{{ page.tags | pop }}`, "Seattle"},
-	{`{{ page.tags | shift }}`, "Tacoma"},
 	{`{{ page.tags | unshift: "Olympia" | join }}`, "Olympia Seattle Tacoma"},
+	{`{% assign links = "" | split: "" %}{% assign links = links | push: "first" %}{% assign links = links | push: "second" %}{{ links | join: "," }}`, "first,second"},
+	{`{% assign links = "" | split: "" %}{% for link in page.tags %}{% assign links = links | push: link %}{% endfor %}{{ links | join: "," }}`, "Seattle,Tacoma"},
 
 	{`{{ array | limit: 2 | join }}`, "first second"},
 	{`{{ array | limit: 0 }}`, ""},
@@ -139,6 +139,82 @@ func TestFilters(t *testing.T) {
 			requireTemplateRender(t, test.in, filterTestBindings, test.expected)
 		})
 	}
+}
+
+func TestPopFilter(t *testing.T) {
+	t.Run("preserves array for chaining", func(t *testing.T) {
+		requireTemplateRender(t, `{{ array | pop | join: "," }}`, filterTestBindings, "first,second")
+	})
+	t.Run("supports count boundaries", func(t *testing.T) {
+		cases := []struct {
+			name     string
+			template string
+			expected string
+		}{
+			{"default", `{{ array | pop | join: "," }}`, "first,second"},
+			{"zero", `{{ array | pop: 0 | join: "," }}`, "first,second,third"},
+			{"multiple", `{{ array | pop: 2 | join: "," }}`, "first"},
+			{"over length", `{{ array | pop: 4 | size }}`, "0"},
+			{"empty remains array", `{{ empty_array | pop | push: "new" | join: "," }}`, "new"},
+		}
+		for _, test := range cases {
+			t.Run(test.name, func(t *testing.T) {
+				requireTemplateRender(t, test.template, filterTestBindings, test.expected)
+			})
+		}
+	})
+	t.Run("does not mutate source", func(t *testing.T) {
+		template := `{% assign original = array %}{% assign popped = original | pop: 2 %}{{ original | join: "," }}|{{ popped | join: "," }}`
+		requireTemplateRender(t, template, filterTestBindings, "first,second,third|first")
+	})
+	t.Run("rejects negative count", func(t *testing.T) {
+		engine := liquid.NewEngine()
+		cfg := config.Default()
+		AddJekyllFilters(engine, &cfg)
+		_, err := engine.ParseAndRender([]byte(`{{ array | pop: -1 }}`), filterTestBindings)
+		require.ErrorContains(t, err, "pop count must not be negative")
+	})
+}
+
+func TestShiftFilter(t *testing.T) {
+	t.Run("preserves array for chaining", func(t *testing.T) {
+		requireTemplateRender(t, `{{ array | shift | join: "," }}`, filterTestBindings, "second,third")
+	})
+	t.Run("supports count boundaries", func(t *testing.T) {
+		cases := []struct {
+			name     string
+			template string
+			expected string
+		}{
+			{"default", `{{ array | shift | join: "," }}`, "second,third"},
+			{"zero", `{{ array | shift: 0 | join: "," }}`, "first,second,third"},
+			{"multiple", `{{ array | shift: 2 | join: "," }}`, "third"},
+			{"over length", `{{ array | shift: 4 | size }}`, "0"},
+			{"empty remains array", `{{ empty_array | shift | push: "new" | join: "," }}`, "new"},
+		}
+		for _, test := range cases {
+			t.Run(test.name, func(t *testing.T) {
+				requireTemplateRender(t, test.template, filterTestBindings, test.expected)
+			})
+		}
+	})
+	t.Run("does not mutate source", func(t *testing.T) {
+		template := `{% assign original = array %}{% assign shifted = original | shift: 2 %}{{ original | join: "," }}|{{ shifted | join: "," }}`
+		requireTemplateRender(t, template, filterTestBindings, "first,second,third|third")
+	})
+	t.Run("rejects negative count", func(t *testing.T) {
+		engine := liquid.NewEngine()
+		cfg := config.Default()
+		AddJekyllFilters(engine, &cfg)
+		_, err := engine.ParseAndRender([]byte(`{{ array | shift: -1 }}`), filterTestBindings)
+		require.ErrorContains(t, err, "shift count must not be negative")
+	})
+}
+
+func TestBreadcrumbAccumulator(t *testing.T) {
+	template := `{% assign nav_breadcrumbs = "" | split: "" %}{% assign nav_breadcrumbs = nav_breadcrumbs | push: '<a href="/docs/ui-components/">UI Components</a>' %}{% assign nav_breadcrumbs = nav_breadcrumbs | push: '<a href="/docs/ui-components/code/">Code</a>' %}{% assign nav_breadcrumbs = nav_breadcrumbs | pop %}{% assign nav_breadcrumbs = nav_breadcrumbs | push: '<a href="/docs/ui-components/code/line-numbers/">Line Numbers</a>' %}{{ nav_breadcrumbs | join: "|" }}`
+	expected := `<a href="/docs/ui-components/">UI Components</a>|<a href="/docs/ui-components/code/line-numbers/">Line Numbers</a>`
+	requireTemplateRender(t, template, filterTestBindings, expected)
 }
 
 // sample returns a random element, so assert membership rather than a fixed
