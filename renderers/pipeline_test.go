@@ -112,6 +112,40 @@ func TestRenderScssifyUsesThemeAndSiteSass(t *testing.T) {
 	require.NotContains(t, output.String(), "{%")
 }
 
+func TestRenderLiquidHighlightBeforeMarkdown(t *testing.T) {
+	cfg := config.Default()
+	cfg.Source = t.TempDir()
+	manager, err := New(cfg, Options{})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(manager.sassTempDir))
+	})
+
+	const source = `before
+
+{% highlight ruby %}
+puts :hello
+{% endhighlight %}
+
+after`
+
+	var output bytes.Buffer
+	err = manager.Render(&output, []byte(source), liquid.Bindings{}, "index.md", 1)
+	require.NoError(t, err)
+
+	rendered := output.String()
+	require.Contains(t, rendered, "<p>before</p>")
+	require.Contains(t, rendered, "<p>after</p>")
+	require.Contains(
+		t,
+		rendered,
+		`<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby">`,
+	)
+	require.Contains(t, rendered, "</code></pre></figure>")
+	require.NotContains(t, rendered, "&lt;figure")
+	require.NotContains(t, rendered, "<p><figure")
+}
+
 func writePipelineTestFile(t *testing.T, root, name, content string) {
 	t.Helper()
 	filename := filepath.Join(root, name)
