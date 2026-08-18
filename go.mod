@@ -38,7 +38,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/osteele/tuesday v1.0.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/reidransom/liquid v1.9.3
+	github.com/reidransom/liquid v1.9.4
 	github.com/tdewolff/parse v2.3.4+incompatible // indirect
 	github.com/tdewolff/test v1.0.11 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect

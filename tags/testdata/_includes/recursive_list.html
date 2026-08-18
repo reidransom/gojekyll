@@ -1,0 +1,1 @@
+{{ include.depth }}{% if include.depth > 0 %}{% assign depth = include.depth | minus: 1 %}{% include recursive_list.html depth=depth %}{% endif %}

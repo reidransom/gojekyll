@@ -63,6 +63,8 @@ github.com/reidransom/liquid v1.9.1 h1:UaoOZAr34AWhU4ESUwxVW/teLhZYaBPiPuigmv1Qu
 github.com/reidransom/liquid v1.9.1/go.mod h1:G3y+OT9YtnjgRHO+zwXwl7Rn5i4LySiHnOENdWXpdIc=
 github.com/reidransom/liquid v1.9.3 h1:CSLaykGieLyxDav3wCW9ZVmKaeWqXgIUPHxv/iR3Q3U=
 github.com/reidransom/liquid v1.9.3/go.mod h1:G3y+OT9YtnjgRHO+zwXwl7Rn5i4LySiHnOENdWXpdIc=
+github.com/reidransom/liquid v1.9.4 h1:jxmhRdqa0J3+1osetygAhK1Lxag4W3exaKr/Mta114Y=
+github.com/reidransom/liquid v1.9.4/go.mod h1:G3y+OT9YtnjgRHO+zwXwl7Rn5i4LySiHnOENdWXpdIc=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/smarty/assertions v1.15.0 h1:cR//PqUBUiQRakZWqBiFFQ9wb8emQGDb0HeGdqGByCY=

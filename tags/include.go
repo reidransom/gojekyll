@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"reflect"
 
 	"github.com/reidransom/liquid/render"
 )
@@ -16,7 +17,12 @@ type includeRequest struct {
 type resolvedInclude struct {
 	filename string
 	include  map[string]interface{}
-	stack    []string
+	stack    []includeStackEntry
+}
+
+type includeStackEntry struct {
+	filename string
+	include  map[string]interface{}
 }
 
 func (tc tagContext) includeTag(rc render.Context) (string, error) {
@@ -75,12 +81,15 @@ func (tc tagContext) renderInclude(request includeRequest, rc render.Context) (s
 func (r includeRequest) resolve(dir string, rc render.Context) (resolvedInclude, error) {
 	filename := filepath.Join(dir, r.filename)
 	includeStack := getIncludeStack(rc)
-	for _, includedFile := range includeStack {
-		if includedFile == filename {
+	for _, entry := range includeStack {
+		if entry.filename == filename && reflect.DeepEqual(entry.include, r.include) {
 			return resolvedInclude{}, fmt.Errorf("include loop detected: %s", filename)
 		}
 	}
-	stack := append(append([]string(nil), includeStack...), filename)
+	stack := append(append([]includeStackEntry(nil), includeStack...), includeStackEntry{
+		filename: filename,
+		include:  r.include,
+	})
 	return resolvedInclude{filename: filename, include: r.include, stack: stack}, nil
 }
 
@@ -92,12 +101,11 @@ func (r resolvedInclude) render(rc render.Context) (string, error) {
 	return rc.RenderFile(r.filename, vars)
 }
 
-// getIncludeStack retrieves the current include stack from the render context.
-func getIncludeStack(rc render.Context) []string {
+func getIncludeStack(rc render.Context) []includeStackEntry {
 	if stack := rc.Get("__include_stack__"); stack != nil {
-		if s, ok := stack.([]string); ok {
+		if s, ok := stack.([]includeStackEntry); ok {
 			return s
 		}
 	}
-	return []string{}
+	return []includeStackEntry{}
 }

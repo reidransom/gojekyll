@@ -101,6 +101,19 @@ func TestCircularInclude(t *testing.T) {
 	require.Contains(t, s, "Inner")
 }
 
+func TestRecursiveIncludeWithChangingArguments(t *testing.T) {
+	engine := liquid.NewEngine()
+	cfg := config.Default()
+	cfg.Source = "testdata"
+	AddJekyllTags(engine, &cfg, []string{"testdata/_includes"}, func(string) (string, bool) {
+		return "", false
+	})
+
+	s, err := engine.ParseAndRenderString(`{% include recursive_list.html depth=2 %}`, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, "210", strings.TrimSpace(s))
+}
+
 func TestIncludeRelativeTag(t *testing.T) {
 	engine := liquid.NewEngine()
 	cfg := config.Default()
