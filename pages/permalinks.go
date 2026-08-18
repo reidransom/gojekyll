@@ -76,11 +76,32 @@ func (p *page) permalinkVariables() map[string]string {
 	return vars
 }
 
-func (p *page) computePermalink(vars map[string]string) (src string, err error) {
+func isHTMLPageOutput(ext string) bool {
+	switch ext {
+	case ".html", ".htm", ".xhtml":
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *page) defaultPagePermalinkPattern() string {
+	if p.site.Config().Permalink != "pretty" ||
+		!isHTMLPageOutput(p.OutputExt()) ||
+		filepath.Base(utils.TrimExt(p.relPath)) == "index" {
+		return DefaultPermalinkPattern
+	}
+	return "/:path/"
+}
+
+func (p *page) computePermalink() (string, error) {
 	explicit := p.fm.String("permalink", "") != ""
-	pattern := p.fm.String("permalink", DefaultPermalinkPattern)
-	if pat, found := PermalinkStyles[pattern]; found {
-		pattern = pat
+	pattern := p.defaultPagePermalinkPattern()
+	if explicit {
+		pattern = p.fm.String("permalink", "")
+		if pat, found := PermalinkStyles[pattern]; found {
+			pattern = pat
+		}
 	}
 	templateVariables := p.permalinkVariables()
 	s, err := utils.SafeReplaceAllStringFunc(templateVariableMatcher, pattern, func(m string) (string, error) {
@@ -96,18 +117,17 @@ func (p *page) computePermalink(vars map[string]string) (src string, err error) 
 	}
 	permalink := utils.URLPathClean("/" + s)
 
-	// Ruby Jekyll treats an HTML index.html as a directory index: its URL is the
-	// containing directory with a trailing slash (/, /sub/), not …/index.html.
-	// Collapse it here, but only for the default pattern (an explicit permalink:
-	// in front matter is honored verbatim) and only for HTML output. The output
-	// file is still written as index.html (see site.WriteDoc).
-	if !explicit && p.OutputExt() == ".html" && strings.HasSuffix(permalink, "/index.html") {
-		permalink = strings.TrimSuffix(permalink, "index.html") // keep trailing slash
+	// Ruby Jekyll treats an implicit HTML index page as a directory index: its
+	// URL is the containing directory with a trailing slash (/, /sub/), not
+	// …/index.html. The output file retains its extension (see site.WriteDoc).
+	if !explicit && isHTMLPageOutput(p.OutputExt()) &&
+		strings.HasSuffix(permalink, "/index"+p.OutputExt()) {
+		permalink = strings.TrimSuffix(permalink, "index"+p.OutputExt()) // keep trailing slash
 	}
 	return permalink, nil
 }
 
 func (p *page) setPermalink() (err error) {
-	p.permalink, err = p.computePermalink(p.permalinkVariables())
+	p.permalink, err = p.computePermalink()
 	return
 }

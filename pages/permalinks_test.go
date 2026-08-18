@@ -59,7 +59,7 @@ func TestExpandPermalinkPattern(t *testing.T) {
 		p := page{file: f}
 		// Use the same test date that we use for generating expectations
 		p.modTime = testDate
-		return p.computePermalink(p.permalinkVariables())
+		return p.computePermalink()
 	}
 
 	runTests := func(tests []pathTest) {
@@ -153,7 +153,7 @@ func TestIndexPagePermalink(t *testing.T) {
 	permalink := func(relPath, outputExt string, fm FrontMatter) string {
 		f := file{site: s, relPath: relPath, fm: fm, outputExt: outputExt}
 		p := page{file: f}
-		out, err := p.computePermalink(nil)
+		out, err := p.computePermalink()
 		require.NoError(t, err)
 		return out
 	}
@@ -174,6 +174,45 @@ func TestIndexPagePermalink(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require.Equal(t, test.out, permalink(test.relPath, test.outputExt, test.fm))
+		})
+	}
+}
+
+func TestGlobalPrettyPagePermalinks(t *testing.T) {
+	permalink := func(style, relPath, outputExt string, fm FrontMatter) string {
+		cfg := config.Default()
+		cfg.Permalink = style
+		p := page{file: file{
+			site:      siteFake{t: t, cfg: cfg},
+			relPath:   relPath,
+			fm:        fm,
+			outputExt: outputExt,
+		}}
+		out, err := p.computePermalink()
+		require.NoError(t, err)
+		return out
+	}
+
+	tests := []struct {
+		name, style, relPath, outputExt string
+		fm                              FrontMatter
+		want                            string
+	}{
+		{"default style", "date", "docs/configuration.md", ".html", FrontMatter{}, "/docs/configuration.html"},
+		{"markdown page", "pretty", "docs/configuration.md", ".html", FrontMatter{}, "/docs/configuration/"},
+		{"html page", "pretty", "docs/configuration.html", ".html", FrontMatter{}, "/docs/configuration/"},
+		{"htm page", "pretty", "docs/configuration.htm", ".htm", FrontMatter{}, "/docs/configuration/"},
+		{"xhtml page", "pretty", "docs/configuration.xhtml", ".xhtml", FrontMatter{}, "/docs/configuration/"},
+		{"root index", "pretty", "index.md", ".html", FrontMatter{}, "/"},
+		{"nested index", "pretty", "docs/index.md", ".html", FrontMatter{}, "/docs/"},
+		{"non-html output", "pretty", "sitemap.xml", ".xml", FrontMatter{}, "/sitemap.xml"},
+		{"index-suffixed name", "pretty", "docs/myindex.md", ".html", FrontMatter{}, "/docs/myindex/"},
+		{"explicit permalink", "pretty", "docs/configuration.md", ".html", FrontMatter{"permalink": "/legacy.html"}, "/legacy.html"},
+		{"default permalink", "pretty", "docs/configuration.md", ".html", FrontMatter{"permalink": "/from-default.html"}, "/from-default.html"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.want, permalink(test.style, test.relPath, test.outputExt, test.fm))
 		})
 	}
 }
