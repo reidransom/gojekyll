@@ -56,12 +56,8 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config, sassIncludePaths ...st
 	e.RegisterFilter("push", func(array []interface{}, item interface{}) interface{} {
 		return append(array, evaluator.MustConvertItem(item, array))
 	})
-	e.RegisterFilter("pop", requireNonEmptyArray(func(array []interface{}) interface{} {
-		return array[0]
-	}))
-	e.RegisterFilter("shift", requireNonEmptyArray(func(array []interface{}) interface{} {
-		return array[len(array)-1]
-	}))
+	e.RegisterFilter("pop", popFilter)
+	e.RegisterFilter("shift", shiftFilter)
 	e.RegisterFilter("unshift", func(array []interface{}, item interface{}) interface{} {
 		return append([]interface{}{evaluator.MustConvertItem(item, array)}, array...)
 	})
@@ -154,18 +150,32 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config, sassIncludePaths ...st
 	newMoneyFormatter(c).register(e.RegisterFilter)
 }
 
-// helpers
-
-func requireNonEmptyArray(fn func([]interface{}) interface{}) func([]interface{}) interface{} {
-	return func(array []interface{}) interface{} {
-		if len(array) == 0 {
-			return nil
-		}
-		return fn(array)
-	}
-}
 
 // array filters
+
+func popFilter(array []interface{}, count func(int) int) ([]interface{}, error) {
+	removalCount := count(1)
+	if removalCount < 0 {
+		return nil, fmt.Errorf("pop count must not be negative")
+	}
+
+	retainedLength := max(len(array)-removalCount, 0)
+	result := make([]interface{}, retainedLength)
+	copy(result, array[:retainedLength])
+	return result, nil
+}
+
+func shiftFilter(array []interface{}, count func(int) int) ([]interface{}, error) {
+	removalCount := count(1)
+	if removalCount < 0 {
+		return nil, fmt.Errorf("shift count must not be negative")
+	}
+
+	firstRetainedIndex := min(removalCount, len(array))
+	result := make([]interface{}, len(array)-firstRetainedIndex)
+	copy(result, array[firstRetainedIndex:])
+	return result, nil
+}
 
 func arrayToSentenceStringFilter(array []string, conjunction func(string) string) string {
 	conj := conjunction("and ")
@@ -220,18 +230,19 @@ func groupByFilter(array []map[string]interface{}, property string) []map[string
 		return nil
 	}
 	groups := map[interface{}][]interface{}{}
-	for i := 0; i < rt.Len(); i++ {
+	for i := range rt.Len() {
 		irt := rt.Index(i)
+		key := interface{}("")
 		if irt.Kind() == reflect.Map && irt.Type().Key().Kind() == reflect.String {
 			krt := irt.MapIndex(reflect.ValueOf(property))
-			if krt.IsValid() && krt.CanInterface() {
-				key := krt.Interface()
-				if group, found := groups[key]; found {
-					groups[key] = append(group, irt.Interface())
-				} else {
-					groups[key] = []interface{}{irt.Interface()}
-				}
+			if krt.IsValid() && krt.CanInterface() && krt.Interface() != nil {
+				key = krt.Interface()
 			}
+		}
+		if group, found := groups[key]; found {
+			groups[key] = append(group, irt.Interface())
+		} else {
+			groups[key] = []interface{}{irt.Interface()}
 		}
 	}
 	var result []map[string]interface{}
