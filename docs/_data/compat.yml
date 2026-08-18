@@ -106,10 +106,10 @@ variables:
             recent posts."
 
 permalinks:
-  status: modified
-  summary: "The global `permalink:` style applies to posts only, unknown
-            placeholders are build errors, and several date placeholders
-            (`:week`, weekday names) plus the `weekdate` style are
+  summary: "Global `permalink: pretty` also applies to implicit ordinary HTML
+            pages; other global styles and custom global patterns apply only to
+            posts. Unknown placeholders are build errors, and several date
+            placeholders (`:week`, weekday names) plus the `weekdate` style are
             missing. Custom front-matter keys work as placeholders."
 
 themes:

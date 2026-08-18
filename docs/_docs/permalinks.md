@@ -36,11 +36,11 @@ To set a permalink structure globally, use the `permalink` key in
 permalink: /:categories/:year/:month/:day/:title:output_ext
 ```
 
-> **Differs from Jekyll.** The global `permalink` setting applies to
-> **posts only**. Regular pages always use `/:path:output_ext` (their source
-> path), and other collections default to `/:collection/:path:output_ext` —
-> override the latter per collection, as shown below. In Jekyll, the global
-> style also reshapes page and collection URLs.
+> **Differs from Jekyll.** Global styles and custom patterns apply to
+> **posts only**, except `permalink: pretty`: it also gives ordinary HTML
+> pages without an explicit permalink directory URLs. Other collections default
+> to `/:collection/:path:output_ext` — override them per collection, as shown
+> below. In Jekyll, the global style also reshapes page and collection URLs.
 
 ### Placeholders
 
@@ -87,6 +87,14 @@ For posts, Jigyll provides the following built-in styles for convenience:
 Rather than typing `permalink: /:categories/:year/:month/:day/:title/`, you
 can just type `permalink: pretty`. The default style is `date`. Jekyll's
 `weekdate` style is not supported.
+
+For ordinary HTML pages without an explicit permalink, the global `pretty`
+style uses a directory URL: `docs/about.md` becomes `/docs/about/` and writes
+to `docs/about/index.html`. HTML-like source pages retain their output
+extension for that index file; index pages retain their containing-directory
+URLs. An explicit page permalink, including one supplied by front-matter
+defaults, always wins. Other global styles retain the normal
+`/:path:output_ext` page URL.
 
 ### Collections
 

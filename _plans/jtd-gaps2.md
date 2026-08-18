@@ -81,40 +81,42 @@ and `/docs/assets/css/just-the-docs-`.
 
 Covers [`just-the-docs-relative-url-filter.md`](just-the-docs-relative-url-filter.md).
 
+### Global `permalink: pretty`
+
+Ordinary HTML pages now use trailing-slash directory routes when the site sets
+`permalink: pretty`; explicit page permalinks still override that default.
+
+Verified against pinned source `394d6c0ec33852f8e593145d21344a955e908acb`:
+
+```text
+59 files written
+47 Jigyll sitemap entries
+47 production sitemap entries
+47/47 normalized route paths match
+/docs/configuration/ -> 200
+/docs/ui-components/code/line-numbers/ -> 200
+/docs/configuration.html -> 404
+```
+
+The corrected directory routes reach Liquid links, the sitemap, and canonical
+URL input without a consumer-specific rewrite. Representative output files are
+`docs/configuration/index.html` and
+`docs/ui-components/code/line-numbers/index.html`; their former `.html`
+destinations are absent.
+
 
 ## Remaining discrepancies
 
 | Severity | Gap | Evidence |
 |---|---|---|
-| High | Global `permalink: pretty` is not honored | 40 of 47 sitemap routes differ. Production uses `/docs/configuration/`; Jigyll emits `/docs/configuration.html`. |
 | Medium | Liquid highlight output differs | Production emits `<figure class="highlight">`; Jigyll emits bare `<pre class="chroma">`. Three code blocks on Line Numbers lose the production borders and spacing. |
-| Medium | SEO metadata differs | Jigyll omits `generator` and Twitter metadata, emits `og:type=article` instead of `website`, adds a build-time `article:published_time`, and canonicalizes affected pages to `.html`. |
+| Medium | SEO metadata differs | Jigyll omits `generator` and Twitter metadata, emits `og:type=article` instead of `website`, and adds a build-time `article:published_time`. Canonical URL input now uses the corrected directory path. |
 | Medium | GitHub metadata content is absent | Production home contains 97 contributor avatars; Jigyll contains none. [INFERENCE] `site.github.contributors` is not populated. |
 | Low | Typography transformations differ | Production smartifies some quotation marks; Jigyll leaves straight quotes. |
 
 
-### 1. Permalink output differs
 
-Sitemap comparison:
-
-```text
-Production URLs:       47
-Jigyll URLs:           47
-Exact URL matches:      7
-Mismatched routes:     40
-```
-
-Example:
-
-```text
-https://just-the-docs.com/docs/configuration/       → 200
-http://127.0.0.1:8765/docs/configuration/            → 404
-http://127.0.0.1:8765/docs/configuration.html        → 200
-```
-
-Jigyll’s internal links are generally consistent with its `.html` output, but they do not match Jekyll’s configured `permalink: pretty` contract, production canonicals, or production sitemap.
-
-### 2. Highlight markup differs
+### 1. Highlight markup differs
 
 On Line Numbers:
 
@@ -125,7 +127,7 @@ Jigyll:     0 <figure> blocks
 
 The highlighted tokens are present, but Jigyll’s Chroma structure does not receive the same theme styling. This accounts for much of the 60–76px page-height difference observed on desktop and mobile.
 
-### 3. Metadata differs
+### 2. Metadata differs
 
 Representative production metadata:
 
@@ -143,14 +145,16 @@ generator: missing
 og:type: article
 twitter metadata: missing
 article:published_time: current build timestamp
-canonical: .../line-numbers.html
+canonical: .../line-numbers/
 ```
+
+The canonical path now matches the configured directory route; the remaining
+metadata differences are unchanged.
 
 ## Recommended next compatibility order
 
-1. Honor global `permalink: pretty`; it affects 40 of 47 published URLs.
-2. Match Jekyll’s `{% highlight %}` wrapper contract.
-3. Align `jekyll-seo-tag` metadata.
-4. Populate `site.github` metadata or explicitly document that plugin gap.
+1. Match Jekyll’s `{% highlight %}` wrapper contract.
+2. Align `jekyll-seo-tag` metadata.
+3. Populate `site.github` metadata or explicitly document that plugin gap.
 
 The array-removal/navigation fix is verified, but full visual and functional parity should not yet be declared.
