@@ -77,9 +77,12 @@ rewritten to goldmark's attribute syntax before parsing.
 ## Syntax highlighting
 
 Fenced code blocks and the `{% raw %}{% highlight %}{% endraw %}` tag are
-highlighted by [chroma](https://github.com/alecthomas/chroma), emitting
-**Rouge-compatible CSS classes** — your existing Pygments/Rouge stylesheet
-works unchanged. The `linenos` argument to
-`{% raw %}{% highlight %}{% endraw %}` adds line numbers; fenced code blocks
-don't support line numbers. Code fences with an unrecognized language are
-wrapped in plain `<pre><code>`.
+highlighted by [chroma](https://github.com/alecthomas/chroma), with
+Rouge-compatible CSS classes. Standard Liquid highlight blocks additionally use
+Jekyll's `figure.highlight > pre > code` shell and normalized language metadata.
+Chroma still supplies token spans and the `linenos` table internals, so this is
+wrapper compatibility rather than byte-for-byte Rouge markup. The `linenos`
+argument applies only to `{% raw %}{% highlight %}{% endraw %}`; fenced blocks
+retain their `div.highlighter-rouge > div.highlight` path and do not support line
+numbers. Code fences with an unrecognized language are wrapped in plain
+`<pre><code>`.
