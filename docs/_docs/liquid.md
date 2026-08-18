@@ -51,8 +51,10 @@ The Jekyll tags are all available:
 - **`include`** / **`include_relative`** — with parameters
   (`{% raw %}{% include note.html content="..." %}{% endraw %}`), theme
   includes, and include-loop detection.
-- **`highlight`** — chroma-based syntax highlighting with Rouge-compatible
-  CSS classes; the optional `linenos` argument works:
+- **`highlight`** — standard blocks use Jekyll's
+  `figure.highlight > pre > code` shell, including normalized `language-*` and
+  `data-lang` metadata. Chroma supplies token spans and `linenos` internals;
+  the optional `linenos` argument works:
   `{% raw %}{% highlight ruby linenos %} ... {% endhighlight %}{% endraw %}`
 - **`link`** / **`post_url`** — resolve a source path to its permalink, with
   build-time validation (a missing target fails the build, as in Jekyll).
