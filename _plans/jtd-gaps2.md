@@ -104,30 +104,49 @@ URL input without a consumer-specific rewrite. Representative output files are
 `docs/ui-components/code/line-numbers/index.html`; their former `.html`
 destinations are absent.
 
+### Liquid highlight wrapper
+
+Liquid `{% raw %}{% highlight %}{% endraw %}` blocks now use one
+`figure.highlight > pre > code` shell with normalized language metadata.
+Chroma continues to supply token spans and line-number table internals.
+
+Verified against pinned source `394d6c0ec33852f8e593145d21344a955e908acb`:
+
+```text
+59 files written
+Liquid source blocks:                         3
+generated figure.highlight blocks:            3
+code.language-yaml[data-lang="yaml"] shells:  3
+bare Chroma roots inside those figures:        0
+fenced div.highlighter-rouge blocks:           2
+```
+
+The three code bodies begin with `compress_html:`, `kramdown:`, and the
+literal nested highlight example, without delimiter-created blank lines.
+The production and Jigyll shells have the same `figure.highlight > pre >
+code.language-yaml[data-lang="yaml"]` hierarchy. At `1280×800`, both pages
+measured `2389px` high and their three figure bottoms were `568px`, `745px`,
+and `904px`. At `375×812`, both pages applied figure borders, `12px` padding
+and margins, `overflow-x: auto`, copy buttons, and no horizontal page
+overflow; the pinned Jigyll page measured `2605px` and the live production
+page `2953px`. The latter total remains source-version-sensitive because the
+live site does not expose its source commit.
+
+Covers [`just-the-docs-highlight-wrapper.md`](just-the-docs-highlight-wrapper.md).
+
 
 ## Remaining discrepancies
 
 | Severity | Gap | Evidence |
 |---|---|---|
-| Medium | Liquid highlight output differs | Production emits `<figure class="highlight">`; Jigyll emits bare `<pre class="chroma">`. Three code blocks on Line Numbers lose the production borders and spacing. |
 | Medium | SEO metadata differs | Jigyll omits `generator` and Twitter metadata, emits `og:type=article` instead of `website`, and adds a build-time `article:published_time`. Canonical URL input now uses the corrected directory path. |
 | Medium | GitHub metadata content is absent | Production home contains 97 contributor avatars; Jigyll contains none. [INFERENCE] `site.github.contributors` is not populated. |
 | Low | Typography transformations differ | Production smartifies some quotation marks; Jigyll leaves straight quotes. |
 
 
 
-### 1. Highlight markup differs
 
-On Line Numbers:
-
-```text
-Production: 3 <figure class="highlight"> blocks
-Jigyll:     0 <figure> blocks
-```
-
-The highlighted tokens are present, but Jigyll’s Chroma structure does not receive the same theme styling. This accounts for much of the 60–76px page-height difference observed on desktop and mobile.
-
-### 2. Metadata differs
+### Metadata differs
 
 Representative production metadata:
 
@@ -153,8 +172,7 @@ metadata differences are unchanged.
 
 ## Recommended next compatibility order
 
-1. Match Jekyll’s `{% highlight %}` wrapper contract.
-2. Align `jekyll-seo-tag` metadata.
-3. Populate `site.github` metadata or explicitly document that plugin gap.
+1. Align `jekyll-seo-tag` metadata.
+2. Populate `site.github` metadata or explicitly document that plugin gap.
 
 The array-removal/navigation fix is verified, but full visual and functional parity should not yet be declared.
