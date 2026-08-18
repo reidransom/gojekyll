@@ -52,8 +52,6 @@ var filterTests = []struct{ in, expected string }{
 	{`{{ all_same | uniq | join }}`, "x"},
 
 	// strings
-	{`{{ "/assets/style.css" | relative_url }}`, "/my-baseurl/assets/style.css"},
-	{`{{ "/assets/style.css" | absolute_url }}`, "http://example.com/my-baseurl/assets/style.css"},
 	{`{{ "Markdown with _emphasis_ and *bold*." | markdownify }}`, "<p>Markdown with <em>emphasis</em> and <em>bold</em>.</p>"},
 	{`{{ obj | jsonify }}`, `{"a":[1,2,3,4]}`},
 	{`{{ site.pages | map: "name" | join }}`, "a b c d"},

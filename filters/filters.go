@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/reidransom/jigyll/config"
-	"github.com/reidransom/jigyll/utils"
 	"github.com/reidransom/liquid"
 	"github.com/reidransom/liquid/evaluator"
 	"github.com/reidransom/liquid/expressions"
@@ -85,12 +84,7 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config, sassIncludePaths ...st
 	})
 
 	// strings
-	e.RegisterFilter("absolute_url", func(s string) string {
-		return utils.URLJoin(c.AbsoluteURL, c.BaseURL, s)
-	})
-	e.RegisterFilter("relative_url", func(s string) string {
-		return c.BaseURL + s
-	})
+	registerURLFilters(e, c)
 	e.RegisterFilter("jsonify", json.Marshal)
 	e.RegisterFilter("markdownify", markdownify)
 	e.RegisterFilter("normalize_whitespace", func(s string) string {
@@ -149,7 +143,6 @@ func AddJekyllFilters(e *liquid.Engine, c *config.Config, sassIncludePaths ...st
 	// money (Shopify-style); prices are an integer number of cents
 	newMoneyFormatter(c).register(e.RegisterFilter)
 }
-
 
 // array filters
 
