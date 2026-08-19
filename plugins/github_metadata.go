@@ -35,7 +35,12 @@ func (p jekyllGithubMetadataPlugin) ModifySiteDrop(s Site, d map[string]interfac
 		return err
 	}
 	ctx := context.Background()
-	repo, err := getGitHubRepo(ctx, p.githubClient(ctx), nwo)
+	client := p.githubClient(ctx)
+	repo, err := getGitHubRepo(ctx, client, nwo)
+	if err != nil {
+		return err
+	}
+	contributors, err := getGitHubContributors(ctx, client, nwo)
 	if err != nil {
 		return err
 	}
@@ -45,6 +50,7 @@ func (p jekyllGithubMetadataPlugin) ModifySiteDrop(s Site, d map[string]interfac
 	}
 	gh := map[string]interface{}{
 		"build_revision":     getBuildRevision(cfg.SourceDir()),
+		"contributors":       contributors,
 		"clone_url":          repo.CloneURL,
 		"is_project_page":    !isUserPage,
 		"is_user_page":       isUserPage,
@@ -67,8 +73,7 @@ func (p jekyllGithubMetadataPlugin) ModifySiteDrop(s Site, d map[string]interfac
 		"zip_url":            repoArchiveURL(repo, "zipball", ref),
 
 		// TODO
-		// contributors public_repositories show_downloads releases versions
-		// wiki_url
+		// public_repositories show_downloads releases versions wiki_url
 
 		// These may be replaced by environment variable values
 		"api_url":        "https://api.github.com",
