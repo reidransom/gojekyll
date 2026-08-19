@@ -49,7 +49,6 @@ func (p *page) ToLiquid() interface{} {
 	data := map[string]interface{}{
 		"categories":    p.Categories(),
 		"content":       p.maybeContent(),
-		"date":          fm.Get("date", p.modTime),
 		"excerpt":       p.Excerpt(),
 		"id":            utils.TrimExt(p.URL()),
 		"name":          filepath.Base(siteRelPath),
@@ -61,6 +60,11 @@ func (p *page) ToLiquid() interface{} {
 
 		// de facto
 		"ext": ext,
+	}
+	if p.IsPost() {
+		if _, hasDate := fm["date"]; !hasDate {
+			data["date"] = p.PostDate()
+		}
 	}
 	for k, v := range p.fm {
 		switch k {
