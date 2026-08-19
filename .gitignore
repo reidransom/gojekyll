@@ -11,3 +11,5 @@ dist/
 .env
 _issues/
 _plans/
+
+/test-workspace/

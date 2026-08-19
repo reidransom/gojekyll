@@ -152,3 +152,8 @@ differences:
   summary: "This page has no Ruby Jekyll counterpart — it aggregates every
             known divergence from the compatibility metadata that powers these
             callouts."
+
+compatibility-roadmap:
+  status: jigyll-only
+  summary: "This page tracks the work and verification gates required for
+            explicit GitHub Pages and Ruby Jekyll compatibility profiles."

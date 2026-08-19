@@ -52,6 +52,8 @@
   docs:
     - title: Plugins
       link: /docs/plugins/
+    - title: Compatibility Roadmap
+      link: /docs/compatibility-roadmap/
     - title: Upgrading
       link: /docs/upgrading/
 - title: Reference

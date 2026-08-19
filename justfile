@@ -1,5 +1,6 @@
 binary := "jigyll"
 package := "github.com/reidransom/jigyll"
+github_pages_image := "ghcr.io/github/pages-gem:v232@sha256:0ad87b5674ba06b23a86907a148953bdc0c98d37f626dd2387c20a0a692c5e58"
 
 _version := `git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null`
 _build_date := `date +%FT%T%z`
@@ -25,6 +26,58 @@ docs: build
 # build the documentation site (docs/) into docs/_site
 docs-build: build
     ./{{binary}} build -s docs
+
+# build a site with the pinned GitHub Pages environment
+pages-build repo destination="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -d "{{repo}}" ]]; then
+        echo "Site directory does not exist: {{repo}}" >&2
+        exit 1
+    fi
+    repo_path="$(realpath "{{repo}}")"
+    output="{{destination}}"
+    if [[ -z "$output" ]]; then
+        output="/tmp/${USER:-jigyll}/jigyll-compare/$(basename "$repo_path").github-pages"
+    fi
+    mkdir -p "$output"
+    output="$(realpath "$output")"
+    if [[ "$output" == "/" || "$output" == "$repo_path" ]]; then
+        echo "Destination must not be the filesystem or site root: $output" >&2
+        exit 1
+    fi
+    docker run --rm \
+        -e JEKYLL_ENV=production \
+        -e PAGES_REPO_NWO \
+        -e JEKYLL_GITHUB_TOKEN \
+        -v "$repo_path:/src/site" \
+        -v "$output:/out" \
+        "{{github_pages_image}}" \
+        jekyll build --source /src/site --destination /out --trace
+    echo "GitHub Pages output: $output"
+
+# serve a site with the pinned GitHub Pages environment
+pages-serve repo port="4000":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -d "{{repo}}" ]]; then
+        echo "Site directory does not exist: {{repo}}" >&2
+        exit 1
+    fi
+    if [[ ! "{{port}}" =~ ^[0-9]+$ ]]; then
+        echo "Port must be numeric: {{port}}" >&2
+        exit 1
+    fi
+    repo_path="$(realpath "{{repo}}")"
+    docker run --rm --init \
+        -e JEKYLL_ENV=production \
+        -e PAGES_REPO_NWO \
+        -e JEKYLL_GITHUB_TOKEN \
+        -p "{{port}}:4000" \
+        -v "$repo_path:/src/site" \
+        "{{github_pages_image}}" \
+        jekyll serve --source /src/site --destination /tmp/_site \
+            --host 0.0.0.0 --port 4000 --force_polling --trace
 
 # cross-compile for linux (amd64 + arm64)
 buildlinux:
