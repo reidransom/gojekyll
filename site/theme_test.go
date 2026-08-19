@@ -24,6 +24,15 @@ func TestFindTheme(t *testing.T) {
 		require.Empty(t, s.themeDir)
 	})
 
+	t.Run("local and remote themes conflict", func(t *testing.T) {
+		s := New(config.Flags{})
+		s.cfg.Source = tempDir
+		s.cfg.Theme = "local"
+		s.cfg.RemoteTheme = "owner/repo@0123456789012345678901234567890123456789"
+
+		require.EqualError(t, s.findTheme(), "_config.yml cannot specify both theme and remote_theme")
+	})
+
 	t.Run("theme found in _theme folder", func(t *testing.T) {
 		// Create _theme/mytheme directory structure
 		themeDir := filepath.Join(tempDir, "_theme", "mytheme")

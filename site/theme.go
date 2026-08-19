@@ -9,6 +9,9 @@ import (
 )
 
 func (s *Site) findTheme() error {
+	if s.cfg.Theme != "" && s.cfg.RemoteTheme != "" {
+		return fmt.Errorf("_config.yml cannot specify both theme and remote_theme")
+	}
 	if s.cfg.Theme == "" {
 		return nil
 	}

@@ -22,6 +22,7 @@ type Config struct {
 	IncludesDir string                            `yaml:"includes_dir"`
 	Collections map[string]map[string]interface{} `yaml:"-"`
 	Theme       string
+	RemoteTheme string `yaml:"remote_theme"`
 
 	// Handling Reading
 	Include     []string

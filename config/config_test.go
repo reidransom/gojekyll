@@ -1,10 +1,11 @@
 package config
 
 import (
+	"github.com/stretchr/testify/require"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_SourceDir(t *testing.T) {
@@ -70,6 +71,25 @@ func TestUnmarshal(t *testing.T) {
 	c = Default()
 	require.NoError(t, Unmarshal([]byte(`collections: \n- x\n-y`), &c))
 	// fmt.Println(c.Collections)
+}
+
+func TestConfig_RemoteTheme(t *testing.T) {
+	t.Run("unmarshals and exposes Liquid variable", func(t *testing.T) {
+		c := Default()
+		require.NoError(t, Unmarshal([]byte("remote_theme: owner/repo@0123456789012345678901234567890123456789"), &c))
+		require.Equal(t, "owner/repo@0123456789012345678901234567890123456789", c.RemoteTheme)
+		require.Equal(t, c.RemoteTheme, c.Variables()["remote_theme"])
+	})
+
+	t.Run("later configuration file wins", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "first.yml"), []byte("remote_theme: first/theme@0123456789012345678901234567890123456789\n"), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "second.yml"), []byte("remote_theme: second/theme@abcdefabcdefabcdefabcdefabcdefabcdefabcd\n"), 0o600))
+
+		c := Default()
+		require.NoError(t, c.FromDirectory(dir, "first.yml,second.yml"))
+		require.Equal(t, "second/theme@abcdefabcdefabcdefabcdefabcdefabcdefabcd", c.RemoteTheme)
+	})
 }
 
 func TestConfig_IsMarkdown(t *testing.T) {
