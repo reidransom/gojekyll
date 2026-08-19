@@ -12,7 +12,6 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/reidransom/jigyll/config"
 	"github.com/reidransom/liquid"
-	"golang.org/x/oauth2"
 )
 
 func init() {
@@ -20,7 +19,10 @@ func init() {
 }
 
 // jekyllGithubMetadataPlugin emulates the jekyll-github-metadata plugin.
-type jekyllGithubMetadataPlugin struct{ plugin }
+type jekyllGithubMetadataPlugin struct {
+	plugin
+	client *github.Client
+}
 
 func (p jekyllGithubMetadataPlugin) ModifySiteDrop(s Site, d map[string]interface{}) error {
 	var (
@@ -32,7 +34,8 @@ func (p jekyllGithubMetadataPlugin) ModifySiteDrop(s Site, d map[string]interfac
 	if err != nil {
 		return err
 	}
-	repo, err := getGitHubRepo(nwo)
+	ctx := context.Background()
+	repo, err := getGitHubRepo(ctx, p.githubClient(ctx), nwo)
 	if err != nil {
 		return err
 	}
@@ -81,23 +84,6 @@ func (p jekyllGithubMetadataPlugin) ModifySiteDrop(s Site, d map[string]interfac
 	}
 	d["github"] = liquid.IterationKeyedMap(gh)
 	return err
-}
-
-func getGitHubRepo(nwo string) (*github.Repository, error) {
-	ctx := context.Background()
-	var ts oauth2.TokenSource
-	if tok := os.Getenv("JEKYLL_GITHUB_TOKEN"); tok != "" {
-		ts = oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tok})
-	} else if tok := os.Getenv("GITHUB_TOKEN"); tok != "" {
-		ts = oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tok})
-	} else if tok := os.Getenv("OCTOKIT_ACCESS_TOKEN"); tok != "" {
-		ts = oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tok})
-	}
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
-	nameAndOwner := strings.SplitN(nwo, "/", 2)
-	repo, _, err := client.Repositories.Get(ctx, nameAndOwner[0], nameAndOwner[1])
-	return repo, err
 }
 
 func repoArchiveURL(repo *github.Repository, format, ref string) string {
