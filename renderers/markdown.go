@@ -64,6 +64,9 @@ var goldmarkEngine = goldmark.New(
 	goldmark.WithParserOptions(
 		parser.WithAutoHeadingID(), // auto-generate heading IDs
 		parser.WithAttribute(),     // support {#id .class key="value"} on headings
+		parser.WithASTTransformers(
+			util.Prioritized(kramdownIALTransformer{}, 100),
+		),
 	),
 	goldmark.WithRendererOptions(
 		gmhtml.WithXHTML(),  // self-closing tags like <br />

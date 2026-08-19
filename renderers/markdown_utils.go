@@ -104,6 +104,20 @@ func extractTextContent(n *html.Node) string {
 	return strings.TrimSpace(text)
 }
 
+func hasHTMLClass(node *html.Node, className string) bool {
+	for _, attr := range node.Attr {
+		if attr.Key != "class" {
+			continue
+		}
+		for _, class := range strings.Fields(attr.Val) {
+			if class == className {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // hasNoTocSibling checks if a heading has a sibling paragraph containing {:.no_toc}
 // Kramdown syntax allows IAL markers on the line after a heading, which Blackfriday
 // renders as a sibling <p> element

@@ -204,11 +204,9 @@ func extractHeadings(n *html.Node) []*TOCEntry {
 					}
 				}
 
-				// Check for {:.no_toc} marker in sibling paragraph
-				// Kramdown places IAL markers on the line after headings, which
-				// Blackfriday renders as a sibling <p> element
-				// Note: {:.no_toc} INSIDE heading text is literal and does NOT exclude
-				if hasNoTocSibling(n) {
+				// A parsed IAL sets no_toc directly on the heading. Keep the
+				// sibling-marker fallback for HTML from older renderers.
+				if hasHTMLClass(n, "no_toc") || hasNoTocSibling(n) {
 					return
 				}
 

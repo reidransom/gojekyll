@@ -145,6 +145,69 @@ func TestRenderMarkdownKramdownIAL(t *testing.T) {
 	require.Contains(t, mustMarkdownString("## Heading {: .special}"), `class="special"`)
 }
 
+func TestRenderMarkdownKramdownBlockIALs(t *testing.T) {
+	t.Run("following block", func(t *testing.T) {
+		result := mustMarkdownString("{: .warning }\nWarning text")
+		require.Equal(t, "<p class=\"warning\">Warning text</p>\n", result)
+		require.NotContains(t, result, "{:")
+	})
+
+	t.Run("preceding paragraph", func(t *testing.T) {
+		result := mustMarkdownString("Lead text\n{: .fs-6 .fw-300 }")
+		require.Equal(t, "<p class=\"fs-6 fw-300\">Lead text</p>\n", result)
+		require.NotContains(t, result, "{:")
+	})
+
+	t.Run("preceding heading", func(t *testing.T) {
+		result := mustMarkdownString("## Heading\n{: #custom-id .special }")
+		require.Equal(t, "<h2 id=\"custom-id\" class=\"special\">Heading</h2>\n", result)
+		require.NotContains(t, result, "{:")
+	})
+
+	t.Run("following blockquote", func(t *testing.T) {
+		result := mustMarkdownString("Before\n\n{: .warning }\n> Quoted")
+		require.Contains(t, result, "<blockquote class=\"warning\">")
+		require.NotContains(t, result, "<p>{: .warning }</p>")
+	})
+
+	t.Run("preceding list", func(t *testing.T) {
+		result := mustMarkdownString("- One\n- Two\n{: .compact }")
+		require.Contains(t, result, "<ul class=\"compact\">")
+		require.NotContains(t, result, "{:")
+	})
+}
+
+func TestRenderMarkdownKramdownInlineIALs(t *testing.T) {
+	result := mustMarkdownString("[Get started](#start){: .btn .btn-primary target=\"_blank\"}")
+	require.Equal(t,
+		"<p><a href=\"#start\" class=\"btn btn-primary\" target=\"_blank\">Get started</a></p>\n",
+		result)
+
+	result = mustMarkdownString("![Alt](image.png){: .rounded width=\"32\"}")
+	require.Equal(t,
+		"<p><img src=\"image.png\" alt=\"Alt\" class=\"rounded\" width=\"32\" /></p>\n",
+		result)
+}
+
+func TestRenderMarkdownKramdownIALBoundaries(t *testing.T) {
+	t.Run("fenced code remains literal", func(t *testing.T) {
+		result := mustMarkdownString("```\n{: .warning }\n```")
+		require.Contains(t, result, "{: .warning }")
+		require.NotContains(t, result, "class=\"warning\"")
+	})
+
+	t.Run("inline code remains literal", func(t *testing.T) {
+		result := mustMarkdownString("`{: .warning }`")
+		require.Equal(t, "<p><code>{: .warning }</code></p>\n", result)
+	})
+
+	t.Run("toc marker remains available to toc processing", func(t *testing.T) {
+		result := mustMarkdownString("* TOC\n{:toc}\n\n## Heading")
+		require.NotContains(t, result, "{:toc}")
+		require.Contains(t, result, `id="markdown-toc"`)
+	})
+}
+
 func TestPreprocessHeadingIALs(t *testing.T) {
 	// Same-line heading IALs are rewritten to Pandoc-style
 	require.Equal(t, "## Heading {#my-id .class}",

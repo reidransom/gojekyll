@@ -207,7 +207,7 @@ Missing features:
 - Plugin system. ([Some individual plugins](./docs/plugins.md) are emulated.)
 - Unlike Jekyll, undefined Liquid variables are errors. Undefined filters follow Jekyll's default and pass input through; set `liquid.strict_filters: true` to make them errors.
 - Missing markdown features:
-  - [attribute list definitions](https://kramdown.gettalong.org/syntax.html#attribute-list-definitions) (ALDs, i.e. `{:refname: .class}` reusable sets; inline attribute lists `{: .class #id}` on headings are supported)
+  - [attribute list definitions](https://kramdown.gettalong.org/syntax.html#attribute-list-definitions) (ALDs, i.e. reusable `{:refname: .class}` sets; block and inline attribute lists such as `{: .class #id}` are supported)
   - [`markdown="span"`, `markdown="block"`](https://kramdown.gettalong.org/syntax.html#html-blocks)
   - Markdown configuration options
 
