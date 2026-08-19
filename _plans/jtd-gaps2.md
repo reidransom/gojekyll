@@ -153,11 +153,22 @@ Covers [`just-the-docs-seo-metadata.md`](just-the-docs-seo-metadata.md).
 
 
 
+### GitHub contributor metadata
+
+`site.github.contributors` now follows every GitHub API response page and
+exposes contributor hashes with the API's snake-case fields. The pinned source
+`394d6c0ec33852f8e593145d21344a955e908acb` built 59 files with 47 HTML
+routes. At verification, the API, Jigyll home page, and production home page
+each contained 97 contributors: 97 list items, linked avatars, and images in
+the same API order. Generated `href`, `src`, and `alt` values matched the API;
+no generated contributor had an empty attribute.
+
+Covers [`just-the-docs-github-metadata.md`](just-the-docs-github-metadata.md).
+
 ## Remaining discrepancies
 
 | Severity | Gap | Evidence |
 |---|---|---|
-| Medium | GitHub metadata content is absent | Production home contains 97 contributor avatars; Jigyll contains none. [INFERENCE] `site.github.contributors` is not populated. |
 | Low | Typography transformations differ | Production smartifies some quotation marks; Jigyll leaves straight quotes. |
 
 
@@ -167,7 +178,6 @@ Covers [`just-the-docs-seo-metadata.md`](just-the-docs-seo-metadata.md).
 
 ## Recommended next compatibility order
 
-1. Populate `site.github` metadata or explicitly document that plugin gap.
-2. Align typography transformations.
+1. Align typography transformations.
 
 The array-removal/navigation fix is verified, but full visual and functional parity should not yet be declared.

@@ -32,7 +32,7 @@ the source of truth for how completely each is implemented.
 | [jekyll-default-layout][jekyll-default-layout] | GitHub Pages | ✓ | |
 | [jekyll-feed][jekyll-feed] | GitHub Pages | ✓ | |
 | [jekyll-gist][jekyll-gist] | core³ | ✓ | |
-| [jekyll-github-metadata][jekyll-github-metadata] | GitHub Pages | partial | `contributors`, `public_repositories`, `show_downloads`, `releases`, `versions`, `wiki_url`; Octokit configuration; GitHub Enterprise |
+| [jekyll-github-metadata][jekyll-github-metadata] | GitHub Pages | partial | `public_repositories`, `show_downloads`, `releases`, `versions`, `wiki_url`; Octokit configuration; GitHub Enterprise |
 | [jekyll-live-reload][jekyll-live-reload] | core | ✓ | always enabled (by design); no way to disable |
 | [jekyll-mentions][jekyll-mentions] | GitHub Pages | ✓ | |
 | [jekyll-optional-front-matter][jekyll-optional-front-matter] | GitHub Pages | ✓ | |
