@@ -41,7 +41,7 @@ the source of truth for how completely each is implemented.
 | [jekyll-redirect-from][jekyll-redirect-from] | GitHub Pages | ✓ | user template |
 | [jekyll-relative-links][jekyll-relative-links] | GitHub Pages | ✓ | |
 | [jekyll-sass-converter][jekyll-sass-converter] | core | ✓ | always enabled (by design); no way to disable; only `sass_dir` is configurable |
-| [jekyll-seo-tag][jekyll-seo-tag] | GitHub Pages | partial | `dateModified`, `datePublished`, `publisher`, `mainEntityOfPage`, `@type` |
+| [jekyll-seo-tag][jekyll-seo-tag] | GitHub Pages | partial | `publisher`, `mainEntityOfPage`, and full author, image, and social normalization |
 | [jekyll-sitemap][jekyll-sitemap] | GitHub Pages | ✓ | file modified dates⁴ |
 | [jekyll-titles-from-headings][jekyll-titles-from-headings] | GitHub Pages | ✗ | |
 | [jemoji][jemoji] | GitHub Pages | ✓ | image tag fallback |

@@ -134,45 +134,40 @@ live site does not expose its source commit.
 
 Covers [`just-the-docs-highlight-wrapper.md`](just-the-docs-highlight-wrapper.md).
 
+### SEO metadata
+
+The pinned Just the Docs source now builds 59 files with 47 HTML routes. All
+47 routes emit the Jigyll generator identity, `twitter:card=summary`,
+`twitter:title`, and `og:type=website`; none emit article publication or
+modification times. The home page emits `WebSite` JSON-LD with
+`name=Just the Docs`, while Line Numbers emits `WebPage` JSON-LD with
+`https://schema.org`, the configured description, and its corrected directory
+canonical URL.
+
+The SEO data builder derives article and `BlogPosting` metadata only from a
+real document date, so explicitly dated documents retain stable publication
+and modification timestamps. Canonical, Open Graph, and JSON-LD URLs share the
+same baseurl-aware resolver.
+
+Covers [`just-the-docs-seo-metadata.md`](just-the-docs-seo-metadata.md).
+
+
 
 ## Remaining discrepancies
 
 | Severity | Gap | Evidence |
 |---|---|---|
-| Medium | SEO metadata differs | Jigyll omits `generator` and Twitter metadata, emits `og:type=article` instead of `website`, and adds a build-time `article:published_time`. Canonical URL input now uses the corrected directory path. |
 | Medium | GitHub metadata content is absent | Production home contains 97 contributor avatars; Jigyll contains none. [INFERENCE] `site.github.contributors` is not populated. |
 | Low | Typography transformations differ | Production smartifies some quotation marks; Jigyll leaves straight quotes. |
 
 
 
 
-### Metadata differs
 
-Representative production metadata:
-
-```text
-generator: Jekyll v4.4.1
-og:type: website
-twitter:card: summary
-canonical: .../line-numbers/
-```
-
-Jigyll:
-
-```text
-generator: missing
-og:type: article
-twitter metadata: missing
-article:published_time: current build timestamp
-canonical: .../line-numbers/
-```
-
-The canonical path now matches the configured directory route; the remaining
-metadata differences are unchanged.
 
 ## Recommended next compatibility order
 
-1. Align `jekyll-seo-tag` metadata.
-2. Populate `site.github` metadata or explicitly document that plugin gap.
+1. Populate `site.github` metadata or explicitly document that plugin gap.
+2. Align typography transformations.
 
 The array-removal/navigation fix is verified, but full visual and functional parity should not yet be declared.
