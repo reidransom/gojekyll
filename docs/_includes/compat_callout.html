@@ -6,18 +6,24 @@
 {%- assign compat_key = page.compat_key | default: page.slug -%}
 {%- assign compat = site.data.compat[compat_key] -%}
 {%- if compat and compat.status != "same" -%}
-<div class="compat-callout compat-{{ compat.status }}">
-  <p class="compat-callout-label">
+  {%- case compat.status -%}
+    {%- when "modified" -%}{%- assign callout_class = "note" -%}
+    {%- when "replaced" -%}{%- assign callout_class = "important" -%}
+    {%- when "unsupported" -%}{%- assign callout_class = "warning" -%}
+    {%- when "jigyll-only" -%}{%- assign callout_class = "new" -%}
+  {%- endcase -%}
+<div class="{{ callout_class }}">
+  <p>
     {%- case compat.status -%}
-      {%- when "modified" -%}<span class="compat-glyph">●</span> Differs from Ruby Jekyll — <em>modified</em>
-      {%- when "replaced" -%}<span class="compat-glyph">◆</span> Differs from Ruby Jekyll — <em>replaced</em>
-      {%- when "unsupported" -%}<span class="compat-glyph">✕</span> Not supported in Jigyll
-      {%- when "jigyll-only" -%}<span class="compat-glyph">＋</span> Jigyll-only — not in Ruby Jekyll
+      {%- when "modified" -%}<strong>Differs from Ruby Jekyll — <em>modified</em></strong>
+      {%- when "replaced" -%}<strong>Differs from Ruby Jekyll — <em>replaced</em></strong>
+      {%- when "unsupported" -%}<strong>Not supported in Jigyll</strong>
+      {%- when "jigyll-only" -%}<strong>Jigyll-only — not in Ruby Jekyll</strong>
     {%- endcase -%}
   </p>
   {{ compat.summary | markdownify }}
   {%- if compat.details and compat.details != page.url %}
-  <p class="compat-callout-details"><a href="{{ compat.details | relative_url }}">All differences →</a></p>
+  <p><a href="{{ compat.details | relative_url }}">All differences →</a></p>
   {%- endif %}
 </div>
 {%- endif -%}

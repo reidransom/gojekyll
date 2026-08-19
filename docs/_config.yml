@@ -2,12 +2,56 @@ title: Jigyll
 description: A fast, partially-compatible Jekyll clone written in Go.
 url: https://jigyll.r2ware.app
 baseurl: ""
-repository: https://github.com/reidransom/jigyll
+repository: reidransom/jigyll
+
+theme: just-the-docs
+permalink: pretty
+
+plugins:
+  - jekyll-github-metadata
+  - jekyll-include-cache
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+search_enabled: true
+enable_copy_code_button: true
+heading_anchors: true
+
+aux_links:
+  "Jigyll on GitHub":
+    - "https://github.com/reidransom/jigyll"
+
+back_to_top: true
+back_to_top_text: "Back to top"
+
+footer_content: 'Jigyll is a fork of <a href="https://github.com/osteele/gojekyll">gojekyll</a>. Documentation adapted from the <a href="https://github.com/jekyll/jekyll">Jekyll documentation</a>.'
+
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/reidransom/jigyll"
+gh_edit_branch: "main"
+gh_edit_source: "docs"
+gh_edit_view_mode: "edit"
+
+callouts:
+  important:
+    color: blue
+  new:
+    color: green
+  note:
+    color: yellow
+  warning:
+    color: red
 
 collections:
   docs:
     output: true
     permalink: /docs/:path/
+
+just_the_docs:
+  collections:
+    docs:
+      name: Documentation
 
 defaults:
   - scope:
