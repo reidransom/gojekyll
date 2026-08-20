@@ -46,6 +46,9 @@ func extractRemoteThemeArchive(archivePath, destination string, limits remoteThe
 		if readErr != nil {
 			return fmt.Errorf("read archive: %w", readErr)
 		}
+		if header.Typeflag == tar.TypeXGlobalHeader {
+			continue
+		}
 		entries++
 		if entries > limits.Entries {
 			return fmt.Errorf("archive exceeds %d entries", limits.Entries)
@@ -63,7 +66,7 @@ func extractRemoteThemeArchive(archivePath, destination string, limits remoteThe
 			return fmt.Errorf("archive entries must share a top-level directory")
 		}
 		if len(components) == 1 {
-			if header.Typeflag != tar.TypeDir {
+			if !archiveEntryIsDirectory(header) {
 				return fmt.Errorf("archive top-level entry must be a directory")
 			}
 			continue
@@ -75,12 +78,12 @@ func extractRemoteThemeArchive(archivePath, destination string, limits remoteThe
 			return fmt.Errorf("archive entry %q escapes destination", header.Name)
 		}
 
-		switch header.Typeflag {
-		case tar.TypeDir:
+		switch {
+		case archiveEntryIsDirectory(header):
 			if err := os.MkdirAll(destinationPath, 0o755); err != nil {
 				return err
 			}
-		case tar.TypeReg, tar.TypeRegA:
+		case header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA:
 			if header.Size < 0 || header.Size > limits.FileBytes {
 				return fmt.Errorf("archive file %q exceeds %d bytes", header.Name, limits.FileBytes)
 			}
@@ -111,6 +114,10 @@ func extractRemoteThemeArchive(archivePath, destination string, limits remoteThe
 		return fmt.Errorf("remote theme _layouts/default.html is not a regular file")
 	}
 	return nil
+}
+
+func archiveEntryIsDirectory(header *tar.Header) bool {
+	return header.Typeflag == tar.TypeDir || header.FileInfo().IsDir()
 }
 
 func validArchivePath(name string) (string, error) {
