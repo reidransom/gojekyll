@@ -3,7 +3,6 @@ package site
 import (
 	"archive/tar"
 	"context"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRemoteThemeCacheKey(t *testing.T) {

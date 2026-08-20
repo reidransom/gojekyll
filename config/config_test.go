@@ -1,11 +1,12 @@
 package config
 
 import (
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_SourceDir(t *testing.T) {

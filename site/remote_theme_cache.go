@@ -77,7 +77,7 @@ func (r *remoteThemeResolver) materializeRemoteTheme(ctx context.Context, spec r
 		return fmt.Errorf("create temporary archive: %w", err)
 	}
 	archivePath := archive.Name()
-	defer os.Remove(archivePath)
+	defer func() { _ = os.Remove(archivePath) }()
 	if err := archive.Close(); err != nil {
 		return fmt.Errorf("close temporary archive: %w", err)
 	}

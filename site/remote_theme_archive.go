@@ -11,6 +11,14 @@ import (
 	"strings"
 )
 
+const legacyTarRegularFile byte = 0 // tar.TypeRegA; emitted by codeload archives.
+
+type remoteThemeArchiveState struct {
+	topLevel  string
+	extracted int64
+	entries   int64
+}
+
 func extractRemoteThemeArchive(archivePath, destination string, limits remoteThemeLimits) (err error) {
 	defer func() {
 		if err != nil {
@@ -35,9 +43,7 @@ func extractRemoteThemeArchive(archivePath, destination string, limits remoteThe
 	}
 
 	reader := tar.NewReader(gzipReader)
-	var topLevel string
-	var extracted int64
-	var entries int64
+	state := remoteThemeArchiveState{}
 	for {
 		header, readErr := reader.Next()
 		if readErr == io.EOF {
@@ -49,60 +55,12 @@ func extractRemoteThemeArchive(archivePath, destination string, limits remoteThe
 		if header.Typeflag == tar.TypeXGlobalHeader {
 			continue
 		}
-		entries++
-		if entries > limits.Entries {
-			return fmt.Errorf("archive exceeds %d entries", limits.Entries)
-		}
-
-		name, err := validArchivePath(header.Name)
-		if err != nil {
+		if err := state.extractEntry(reader, header, destination, limits); err != nil {
 			return err
-		}
-		components := strings.Split(name, "/")
-		if topLevel == "" {
-			topLevel = components[0]
-		}
-		if components[0] != topLevel {
-			return fmt.Errorf("archive entries must share a top-level directory")
-		}
-		if len(components) == 1 {
-			if !archiveEntryIsDirectory(header) {
-				return fmt.Errorf("archive top-level entry must be a directory")
-			}
-			continue
-		}
-
-		relative := strings.Join(components[1:], "/")
-		destinationPath := filepath.Join(destination, filepath.FromSlash(relative))
-		if !pathWithin(destination, destinationPath) {
-			return fmt.Errorf("archive entry %q escapes destination", header.Name)
-		}
-
-		switch {
-		case archiveEntryIsDirectory(header):
-			if err := os.MkdirAll(destinationPath, 0o755); err != nil {
-				return err
-			}
-		case header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA:
-			if header.Size < 0 || header.Size > limits.FileBytes {
-				return fmt.Errorf("archive file %q exceeds %d bytes", header.Name, limits.FileBytes)
-			}
-			extracted += header.Size
-			if extracted > limits.ExtractedBytes {
-				return fmt.Errorf("archive exceeds %d extracted bytes", limits.ExtractedBytes)
-			}
-			if err := os.MkdirAll(filepath.Dir(destinationPath), 0o755); err != nil {
-				return err
-			}
-			if err := extractRegularFile(reader, destinationPath, header.Size); err != nil {
-				return fmt.Errorf("extract %q: %w", header.Name, err)
-			}
-		default:
-			return fmt.Errorf("archive entry %q has unsupported type", header.Name)
 		}
 	}
 
-	if topLevel == "" {
+	if state.topLevel == "" {
 		return fmt.Errorf("archive contains no entries")
 	}
 	layout := filepath.Join(destination, "_layouts", "default.html")
@@ -112,6 +70,80 @@ func extractRemoteThemeArchive(archivePath, destination string, limits remoteThe
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("remote theme _layouts/default.html is not a regular file")
+	}
+	return nil
+}
+
+func (state *remoteThemeArchiveState) extractEntry(reader *tar.Reader, header *tar.Header, destination string, limits remoteThemeLimits) error {
+	state.entries++
+	if state.entries > limits.Entries {
+		return fmt.Errorf("archive exceeds %d entries", limits.Entries)
+	}
+
+	destinationPath, topLevel, err := state.entryDestination(header.Name, destination)
+	if err != nil {
+		return err
+	}
+	if topLevel {
+		if !archiveEntryIsDirectory(header) {
+			return fmt.Errorf("archive top-level entry must be a directory")
+		}
+		return nil
+	}
+	return state.extractArchiveEntry(reader, header, destinationPath, limits)
+}
+
+func (state *remoteThemeArchiveState) entryDestination(name, destination string) (string, bool, error) {
+	name, err := validArchivePath(name)
+	if err != nil {
+		return "", false, err
+	}
+	components := strings.Split(name, "/")
+	if state.topLevel == "" {
+		state.topLevel = components[0]
+	}
+	if components[0] != state.topLevel {
+		return "", false, fmt.Errorf("archive entries must share a top-level directory")
+	}
+	if len(components) == 1 {
+		return "", true, nil
+	}
+
+	destinationPath := filepath.Join(destination, filepath.FromSlash(strings.Join(components[1:], "/")))
+	if !pathWithin(destination, destinationPath) {
+		return "", false, fmt.Errorf("archive entry %q escapes destination", name)
+	}
+	return destinationPath, false, nil
+}
+
+func (state *remoteThemeArchiveState) extractArchiveEntry(reader *tar.Reader, header *tar.Header, destination string, limits remoteThemeLimits) error {
+	switch {
+	case archiveEntryIsDirectory(header):
+		return os.MkdirAll(destination, 0o755)
+	case isArchiveRegularFile(header):
+		return state.extractArchiveRegularFile(reader, header, destination, limits)
+	default:
+		return fmt.Errorf("archive entry %q has unsupported type", header.Name)
+	}
+}
+
+func isArchiveRegularFile(header *tar.Header) bool {
+	return header.Typeflag == tar.TypeReg || header.Typeflag == legacyTarRegularFile
+}
+
+func (state *remoteThemeArchiveState) extractArchiveRegularFile(reader *tar.Reader, header *tar.Header, destination string, limits remoteThemeLimits) error {
+	if header.Size < 0 || header.Size > limits.FileBytes {
+		return fmt.Errorf("archive file %q exceeds %d bytes", header.Name, limits.FileBytes)
+	}
+	state.extracted += header.Size
+	if state.extracted > limits.ExtractedBytes {
+		return fmt.Errorf("archive exceeds %d extracted bytes", limits.ExtractedBytes)
+	}
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		return err
+	}
+	if err := extractRegularFile(reader, destination, header.Size); err != nil {
+		return fmt.Errorf("extract %q: %w", header.Name, err)
 	}
 	return nil
 }
