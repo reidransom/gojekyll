@@ -1,8 +1,12 @@
 package site
 
 import (
+	"archive/tar"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/reidransom/jigyll/config"
@@ -159,4 +163,131 @@ func TestReadThemeAssets(t *testing.T) {
 		err = s.readThemeAssets()
 		require.NoError(t, err) // Should not error when assets dir doesn't exist
 	})
+}
+
+func TestFindThemeSkipsRemoteResolutionWithoutRemoteTheme(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		requests.Add(1)
+	}))
+	defer server.Close()
+
+	s := New(config.Flags{})
+	s.cfg.Source = t.TempDir()
+	s.remoteThemes = testRemoteThemeResolver(t, server.URL)
+	require.NoError(t, s.findTheme())
+	require.Zero(t, requests.Load())
+}
+
+func TestFindThemeRejectsMalformedRemoteThemeBeforeDownload(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		requests.Add(1)
+	}))
+	defer server.Close()
+
+	s := New(config.Flags{})
+	s.cfg.Source = t.TempDir()
+	s.cfg.RemoteTheme = "owner/repo@main"
+	s.remoteThemes = testRemoteThemeResolver(t, server.URL)
+
+	err := s.findTheme()
+	require.ErrorContains(t, err, `resolve remote theme "owner/repo@main"`)
+	require.Zero(t, requests.Load())
+}
+
+func TestRemoteThemeBuildAndSiteOverrides(t *testing.T) {
+	const sha = "0123456789012345678901234567890123456789"
+	archivePath := writeRemoteThemeArchive(t, []remoteThemeArchiveEntry{
+		{name: "theme/", typeflag: tar.TypeDir},
+		{name: "theme/_layouts/default.html", typeflag: tar.TypeReg, body: "THEME LAYOUT {% include shared.html %}<main>{{ content }}</main>"},
+		{name: "theme/_includes/shared.html", typeflag: tar.TypeReg, body: "THEME INCLUDE"},
+		{name: "theme/_sass/_colors.scss", typeflag: tar.TypeReg, body: "$color: red;"},
+		{name: "theme/assets/style.scss", typeflag: tar.TypeReg, body: "---\n---\n@import \"colors\";\nbody { color: $color; }"},
+		{name: "theme/assets/theme.txt", typeflag: tar.TypeReg, body: "THEME ASSET"},
+	})
+	archive, err := os.ReadFile(archivePath)
+	require.NoError(t, err)
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = w.Write(archive)
+	}))
+	defer server.Close()
+
+	t.Run("uses remote layout include Sass and asset", func(t *testing.T) {
+		root := remoteThemeTestSite(t, sha)
+		s := remoteThemeTestBuild(t, root, testRemoteThemeResolver(t, server.URL))
+
+		html := readThemeTestOutput(t, root, "index.html")
+		require.Contains(t, html, "THEME LAYOUT")
+		require.Contains(t, html, "THEME INCLUDE")
+		require.Contains(t, readThemeTestOutput(t, root, "assets/style.css"), "red")
+		require.Equal(t, "THEME ASSET", readThemeTestOutput(t, root, "assets/theme.txt"))
+		require.NotEmpty(t, s.themeDir)
+	})
+
+	t.Run("site files override cached remote theme files", func(t *testing.T) {
+		root := remoteThemeTestSite(t, sha)
+		writeThemeTestFile(t, root, "_layouts/default.html", "SITE LAYOUT {% include shared.html %}<main>{{ content }}</main>")
+		writeThemeTestFile(t, root, "_includes/shared.html", "SITE INCLUDE")
+		writeThemeTestFile(t, root, "_sass/_colors.scss", "$color: blue;")
+		writeThemeTestFile(t, root, "assets/style.scss", "---\n---\n@import \"colors\";\nbody { color: $color; }")
+		writeThemeTestFile(t, root, "assets/theme.txt", "SITE ASSET")
+		remoteThemeTestBuild(t, root, testRemoteThemeResolver(t, server.URL))
+
+		html := readThemeTestOutput(t, root, "index.html")
+		require.Contains(t, html, "SITE LAYOUT")
+		require.Contains(t, html, "SITE INCLUDE")
+		require.NotContains(t, html, "THEME LAYOUT")
+		require.Contains(t, readThemeTestOutput(t, root, "assets/style.css"), "blue")
+		require.Equal(t, "SITE ASSET", readThemeTestOutput(t, root, "assets/theme.txt"))
+	})
+
+	t.Run("missing theme resource reports the renderer error", func(t *testing.T) {
+		root := remoteThemeTestSite(t, sha)
+		writeThemeTestFile(t, root, "_layouts/default.html", "{% include absent.html %}{{ content }}")
+		s, err := FromDirectory(root, config.Flags{})
+		require.NoError(t, err)
+		s.remoteThemes = testRemoteThemeResolver(t, server.URL)
+		require.NoError(t, s.Read())
+		_, err = s.Write()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "absent.html")
+	})
+
+	require.EqualValues(t, 3, requests.Load())
+}
+
+func remoteThemeTestSite(t *testing.T, sha string) string {
+	t.Helper()
+	root := t.TempDir()
+	writeThemeTestFile(t, root, "_config.yml", "remote_theme: owner/repo@"+sha)
+	writeThemeTestFile(t, root, "index.md", "---\nlayout: default\n---\nPAGE")
+	return root
+}
+
+func remoteThemeTestBuild(t *testing.T, root string, resolver *remoteThemeResolver) *Site {
+	t.Helper()
+	s, err := FromDirectory(root, config.Flags{})
+	require.NoError(t, err)
+	s.remoteThemes = resolver
+	require.NoError(t, s.Read())
+	_, err = s.Write()
+	require.NoError(t, err)
+	return s
+}
+
+func writeThemeTestFile(t *testing.T, root, name, content string) {
+	t.Helper()
+	filename := filepath.Join(root, name)
+	require.NoError(t, os.MkdirAll(filepath.Dir(filename), 0o755))
+	require.NoError(t, os.WriteFile(filename, []byte(content), 0o644))
+}
+
+func readThemeTestOutput(t *testing.T, root, name string) string {
+	t.Helper()
+	output, err := os.ReadFile(filepath.Join(root, "_site", name))
+	require.NoError(t, err)
+	return string(output)
 }

@@ -45,7 +45,10 @@ func TestExtractRemoteThemeArchive(t *testing.T) {
 		{name: "Windows path", entry: remoteThemeArchiveEntry{name: "theme\\outside", typeflag: tar.TypeReg}},
 		{name: "symbolic link", entry: remoteThemeArchiveEntry{name: "theme/link", typeflag: tar.TypeSymlink, linkname: "target"}},
 		{name: "hard link", entry: remoteThemeArchiveEntry{name: "theme/link", typeflag: tar.TypeLink, linkname: "target"}},
-		{name: "device", entry: remoteThemeArchiveEntry{name: "theme/device", typeflag: tar.TypeChar}},
+		{name: "character device", entry: remoteThemeArchiveEntry{name: "theme/char", typeflag: tar.TypeChar}},
+		{name: "block device", entry: remoteThemeArchiveEntry{name: "theme/block", typeflag: tar.TypeBlock}},
+		{name: "FIFO", entry: remoteThemeArchiveEntry{name: "theme/fifo", typeflag: tar.TypeFifo}},
+		{name: "socket", entry: remoteThemeArchiveEntry{name: "theme/socket", typeflag: 's'}},
 	} {
 		t.Run("rejects "+tc.name, func(t *testing.T) {
 			archivePath := writeRemoteThemeArchive(t, []remoteThemeArchiveEntry{tc.entry})
@@ -64,6 +67,21 @@ func TestExtractRemoteThemeArchive(t *testing.T) {
 		require.ErrorContains(t, err, "exceeds 3 bytes")
 		_, statErr := os.Stat(destination)
 		require.True(t, os.IsNotExist(statErr))
+	})
+
+	t.Run("enforces total size and entry limits", func(t *testing.T) {
+		entries := []remoteThemeArchiveEntry{
+			{name: "theme/", typeflag: tar.TypeDir},
+			{name: "theme/_layouts/default.html", typeflag: tar.TypeReg, body: "abc"},
+			{name: "theme/_includes/head.html", typeflag: tar.TypeReg, body: "def"},
+		}
+		archivePath := writeRemoteThemeArchive(t, entries)
+
+		err := extractRemoteThemeArchive(archivePath, filepath.Join(t.TempDir(), "total"), remoteThemeLimits{Entries: 10, FileBytes: 3, ExtractedBytes: 5})
+		require.ErrorContains(t, err, "exceeds 5 extracted bytes")
+
+		err = extractRemoteThemeArchive(archivePath, filepath.Join(t.TempDir(), "entries"), remoteThemeLimits{Entries: 2, FileBytes: 3, ExtractedBytes: 10})
+		require.ErrorContains(t, err, "exceeds 2 entries")
 	})
 }
 
