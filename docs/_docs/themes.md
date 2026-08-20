@@ -4,34 +4,42 @@ permalink: /docs/themes/
 description: Using Jekyll themes with Jigyll — the _theme folder, Bundler fallback, and what's not supported.
 ---
 
-Themes package up layouts, includes, and stylesheets in a way that can be
-overridden by your site's content. Jigyll supports Jekyll's theme layout:
-a theme contributes its `_layouts`, `_includes`, `_sass`, and `assets`
-directories to your site's build.
+Themes package layouts, includes, and stylesheets in a way that can be
+overridden by your site's content. A theme contributes its `_layouts`,
+`_includes`, `_sass`, and `assets` directories to your site's build.
 
-Activate a theme with the `theme` key in `_config.yml`:
+Jigyll supports two separate theme mechanisms:
+
+- `theme` selects a local `_theme/<name>` directory or a Bundler theme.
+- `remote_theme` downloads a pinned GitHub theme source archive.
+
+Do not configure both keys. A build with both fails with:
+
+```text
+_config.yml cannot specify both theme and remote_theme
+```
+
+## Local themes
+
+Activate a local or Bundler theme with the `theme` key in `_config.yml`:
 
 ```yaml
 theme: minima
 ```
 
-## How Jigyll finds a theme
-
-> **Differs from Jekyll.** There is no gem installation step. Jigyll
-> resolves the theme directory in two ways, in order:
+> **Differs from Jekyll.** There is no gem installation step. Jigyll resolves
+> `theme` in two ways, in order:
 >
-> 1. **A local `_theme` folder** — if `<source>/_theme/<theme-name>/`
->    exists, it is used. This is the Jigyll-native way to vendor a theme:
->    copy (or submodule) the theme's files there.
-
-> 2. **Bundler fallback** — otherwise, if `bundle` is on your `PATH`,
->    Jigyll runs `bundle show <theme-name>` and uses the gem's directory.
->    This lets an existing Jekyll project with a `Gemfile` keep working,
->    but it does require a Ruby toolchain.
+> 1. **A local `_theme` folder** — if `<source>/_theme/<theme-name>/` exists,
+>    it is used. This is the Jigyll-native way to vendor a theme: copy (or
+>    submodule) the theme's files there.
 >
-> If neither works, the build fails with an error. The
-> `jekyll-remote-theme` plugin (`remote_theme:` key) is **not supported** —
-> vendor the theme into `_theme/` instead.
+> 2. **Bundler fallback** — otherwise, if `bundle` is on your `PATH`, Jigyll
+>    runs `bundle show <theme-name>` and uses the gem's directory. This lets an
+>    existing Jekyll project with a `Gemfile` keep working, but it requires a
+>    Ruby toolchain.
+>
+> If neither works, the build fails with an error.
 
 ### Installing a local theme
 
@@ -56,6 +64,25 @@ This clones the repository to `_theme/<theme-name>/` and writes
 `theme: <theme-name>` to `my-site/_config.yml`. The generated site has no local
 `_layouts/default.html`, so the selected theme's layout is used. The URL must
 resolve to a theme directory name and the repository must provide that layout.
+
+## Pinned GitHub remote themes
+
+Use `remote_theme` only with an immutable GitHub commit:
+
+```yaml
+remote_theme: just-the-docs/just-the-docs@394d6c0ec33852f8e593145d21344a955e908acb
+```
+
+The exact accepted syntax is `owner/repository@<40-character-hex-SHA>`.
+Branches, tags, shortened SHAs, omitted revisions, URLs, and non-GitHub hosts
+are intentionally unsupported. Jigyll constructs the archive request itself
+for `https://codeload.github.com`; configuration cannot choose another host.
+
+The first build downloads and validates the archive, so it requires network
+access. Validated themes are cached at
+`<user-cache-dir>/jigyll/themes/<sha256-normalized-spec>/` (`$XDG_CACHE_HOME`
+on Linux). Subsequent builds use that immutable cache entry without Git,
+submodule checkout, or another download.
 
 ## What a theme provides
 
@@ -94,7 +121,7 @@ included in your stylesheet using the `@import` directive:
 
 {% raw %}
 ```css
-@import "{{ site.theme }}";
+@import "theme-partial";
 ```
 {% endraw %}
 

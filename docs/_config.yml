@@ -4,7 +4,7 @@ url: https://jigyll.r2ware.app
 baseurl: ""
 repository: reidransom/jigyll
 
-theme: just-the-docs
+remote_theme: just-the-docs/just-the-docs@394d6c0ec33852f8e593145d21344a955e908acb
 permalink: pretty
 
 plugins:

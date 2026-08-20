@@ -114,10 +114,11 @@ permalinks:
 
 themes:
   status: modified
-  summary: "Themes are resolved from a local `_theme/<name>` folder, or via
-            Bundler (`bundle show`) as a fallback — `remote_theme` is not
-            supported, and theme `_data`, theme config, and `theme.*`
-            variables are ignored."
+  summary: "Themes resolve from a local `_theme/<name>` folder or Bundler.
+            `remote_theme` supports only pinned GitHub
+            `owner/repository@40-character-SHA` archives; branches, tags,
+            URLs, and full plugin behavior remain unsupported. Theme `_data`,
+            theme config, and `theme.*` variables are ignored."
 
 liquid:
   status: modified

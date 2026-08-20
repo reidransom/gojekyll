@@ -57,7 +57,7 @@ comparison suite, even where the current implementation is marked complete.
 | `jekyll-readme-index` | 0.3.0 | Complete | Verify index precedence, extensions, and front matter |
 | `jekyll-redirect-from` | 0.16.0 | Partial | Match the default template and redirect route behavior |
 | `jekyll-relative-links` | 0.6.1 | Complete | Verify collections, index files, and disabled rendering |
-| `jekyll-remote-theme` | 0.4.3 | Missing | Resolve pinned GitHub themes and apply normal theme precedence |
+| `jekyll-remote-theme` | 0.4.3 | Partial | Resolve pinned GitHub `owner/repository@40-character-SHA` archives; branches, tags, omitted refs, arbitrary URLs, and full plugin behavior remain unsupported |
 | `jekyll-seo-tag` | 2.8.0 | Partial | Complete publisher, author, image, social, and canonical metadata |
 | `jekyll-sitemap` | 1.4.0 | Partial | Match file modification dates and exclusion rules |
 | `jekyll-titles-from-headings` | 0.5.3 | Missing | Implement title extraction, stripping, and configuration |
@@ -132,11 +132,12 @@ passes with zero unexplained differences.
   - Match `jekyll-sitemap` timestamps and exclusion behavior.
   - Match `jemoji` fallback markup and replacement boundaries.
   - Add selectable `jekyll-commonmark-ghpages` rendering.
-- Add missing supported behavior
-  - Implement `jekyll-remote-theme` with immutable revision resolution.
-  - Apply remote layouts, includes, assets, and configuration through the existing theme path.
-  - Reject unpinned or unavailable theme references with actionable errors.
-- Verify already-emulated optional plugins
+- Retain pinned GitHub remote-theme coverage
+  - Verify layouts, includes, Sass, and assets retain normal site-over-theme precedence.
+  - Keep archive fixtures and cache tests network-independent.
+  - Document the intentionally unsupported branches, tags, omitted revisions,
+    arbitrary URLs, theme configuration, theme data, dependencies, and
+    `theme.*` variables.
   - Run isolated and interaction fixtures for avatar, feed, gist, include-cache, mentions, and pagination.
   - Verify plugin order using fixtures where post-render transformations overlap.
   - Verify disabling and configuration semantics for each optional plugin.
