@@ -2,6 +2,7 @@ package site
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,22 @@ func (s *Site) findTheme() error {
 	if s.cfg.Theme != "" && s.cfg.RemoteTheme != "" {
 		return fmt.Errorf("_config.yml cannot specify both theme and remote_theme")
 	}
+	if s.cfg.RemoteTheme != "" {
+		spec, err := parseRemoteTheme(s.cfg.RemoteTheme)
+		if err != nil {
+			return fmt.Errorf("resolve remote theme %q: %w", s.cfg.RemoteTheme, err)
+		}
+		themeDir, err := s.remoteThemes.resolve(context.Background(), spec)
+		if err != nil {
+			return fmt.Errorf("resolve remote theme %q: %w", s.cfg.RemoteTheme, err)
+		}
+		s.themeDir = themeDir
+		return nil
+	}
+	return s.findLocalOrBundledTheme()
+}
+
+func (s *Site) findLocalOrBundledTheme() error {
 	if s.cfg.Theme == "" {
 		return nil
 	}
