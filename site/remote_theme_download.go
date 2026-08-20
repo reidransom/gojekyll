@@ -20,6 +20,7 @@ type remoteThemeLimits struct {
 
 type remoteThemeResolver struct {
 	client     *http.Client
+	cacheRoot  string
 	archiveURL func(remoteThemeSpec) string
 	limits     remoteThemeLimits
 }
