@@ -13,15 +13,12 @@ three surfaces.
 {% assign statuses = "replaced|modified|unsupported|jigyll-only" | split: "|" -%}
 {% for status in statuses -%}
 {% capture rows -%}
-{% for section in site.data.docs_nav -%}
-{% for item in section.docs -%}
-{% assign compat_key = item.link | remove_first: "/docs/" | replace: "/", "" -%}
-{% if compat_key == "" %}{% assign compat_key = "index" %}{% endif -%}
+{% for item in site.docs -%}
+{% assign compat_key = item.compat_key | default: item.slug -%}
 {% assign compat = site.data.compat[compat_key] -%}
 {% if compat.status == status -%}
-- **[{{ item.title }}]({{ item.link | relative_url }})** — {{ compat.summary }}
+- **[{{ item.title }}]({{ item.url | relative_url }})** — {{ compat.summary }}
 {% endif -%}
-{% endfor -%}
 {% endfor -%}
 {% endcapture -%}
 {% assign trimmed = rows | strip -%}
