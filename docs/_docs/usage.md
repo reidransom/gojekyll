@@ -1,5 +1,7 @@
 ---
-title: Usage
+title: Command-Line Usage
+parent: Build
+nav_order: 1
 permalink: /docs/usage/
 description: Jigyll's command-line interface.
 ---

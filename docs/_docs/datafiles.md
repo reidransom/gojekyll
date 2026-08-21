@@ -1,5 +1,7 @@
 ---
 title: Data Files
+parent: Content
+nav_order: 5
 permalink: /docs/datafiles/
 description: Loading custom data from the _data directory, and which formats Jigyll reads.
 ---

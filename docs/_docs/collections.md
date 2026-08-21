@@ -1,5 +1,7 @@
 ---
 title: Collections
+parent: Content
+nav_order: 4
 permalink: /docs/collections/
 description: Grouping related content into collections, and which collection options Jigyll supports.
 ---

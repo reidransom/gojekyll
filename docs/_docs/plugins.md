@@ -1,5 +1,7 @@
 ---
 title: Plugins
+parent: Guides
+nav_order: 1
 permalink: /docs/plugins/
 description: Jigyll has no extensible plugin system, but emulates a fixed set of popular Jekyll plugins.
 ---

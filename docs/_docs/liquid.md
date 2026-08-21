@@ -1,5 +1,7 @@
 ---
 title: Liquid
+parent: Site Structure
+nav_order: 2
 permalink: /docs/liquid/
 description: The Liquid filters and tags Jigyll supports, what's missing, and the Jigyll-only money filters.
 ---

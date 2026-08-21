@@ -1,5 +1,7 @@
 ---
 title: Variables
+parent: Site Structure
+nav_order: 3
 permalink: /docs/variables/
 description: The site, page, layout, and jekyll variables Jigyll exposes to Liquid.
 ---

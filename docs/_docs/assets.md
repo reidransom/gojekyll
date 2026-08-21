@@ -1,5 +1,7 @@
 ---
 title: Assets
+parent: Content
+nav_order: 6
 permalink: /docs/assets/
 description: Sass/SCSS conversion in Jigyll — always on, always minified, no CoffeeScript.
 ---

@@ -1,5 +1,7 @@
 ---
 title: Benchmarks
+parent: Build
+nav_order: 4
 permalink: /docs/benchmarks/
 description: Build-time comparisons between Ruby Jekyll and Jigyll on real sites.
 ---

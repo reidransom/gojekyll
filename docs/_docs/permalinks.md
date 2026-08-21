@@ -1,5 +1,7 @@
 ---
 title: Permalinks
+parent: Site Structure
+nav_order: 6
 permalink: /docs/permalinks/
 description: Controlling output URLs — placeholders, built-in styles, and where Jigyll's rules differ.
 ---

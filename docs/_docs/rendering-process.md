@@ -1,5 +1,7 @@
 ---
 title: Rendering Process
+parent: Build
+nav_order: 3
 permalink: /docs/rendering-process/
 description: How Jigyll renders a page, and how its goldmark Markdown differs from kramdown.
 ---

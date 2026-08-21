@@ -1,5 +1,7 @@
 ---
 title: Layouts
+parent: Site Structure
+nav_order: 5
 permalink: /docs/layouts/
 description: Templates that wrap around your content, with inheritance and layout variables.
 ---
