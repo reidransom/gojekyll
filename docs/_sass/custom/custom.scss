@@ -3,6 +3,10 @@ $compat-replaced: #1d4ed8;
 $compat-unsupported: #b91c1c;
 $compat-jigyll-only: #15803d;
 
+div.highlighter-rouge div.highlight {
+  padding-top: 0.1rem;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
