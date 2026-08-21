@@ -131,25 +131,32 @@ func fileErrorContext(e error) (s, path string) {
 	return w.String(), path
 }
 
-// CSS theme adapted from github.com/facebookincubator/create-react-app
-const renderErrorTemplate = `<html><head>
-	<style type="text/css">
-		body { background-color: black; color: rgb(232, 232, 232); font-family: Menlo, Consolas, monospace; padding: 2rem; line-height: 1.2; }
-		h1 { color: #E36049 }
-		div { margin: 20px 0; }
-		code { font-size: xx-large; }
-		.line.error .gutter::before { content: "⚠️"; width: 0; float:left; }
-		.line.error, .line.error .lineno { color: red; }
-		.lineno { color: #6D7891; border-right: 1px solid #6D7891; padding-right: 10px; margin: 0 10px 0 5px; display: inline-block; text-align: right; width: 3em; }
-		footer { border-top: 1px solid #6D7891; margin-top: 5ex; padding-top: 5px; }
+// renderErrorTemplate keeps browser-side build failures readable without competing
+// with the error itself.
+const renderErrorTemplate = `<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Render failed</title>
+	<style>
+		:root { color-scheme: light; line-height: 1.5; }
+		body { max-width: 72rem; margin: 0 auto; padding: 2rem; color: #111; background: #fff; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+		h1 { margin: 0 0 1rem; font-size: 1rem; font-weight: 600; }
+		div { margin-bottom: 1rem; }
+		code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 0.875rem; }
+		.line { display: block; }
+		.line.error { color: #b42318; }
+		.lineno { display: inline-block; width: 3em; margin-right: 1em; color: #767676; text-align: right; }
+		footer { margin-top: 2rem; color: #767676; font-size: 0.875rem; }
 	</style>
 </head>
-	<body>
-		<h1>Failed to render.</h1>
-		<div>{{ error }}:</div>
-		<code>{{ excerpt }}</code>
-		{% if watch and path != "" %}
-		<footer>Edit and save “{{ path }}” to reload this page.</footer>
-		{% endif %}
-	</body>
+<body>
+	<h1>Failed to render.</h1>
+	<div>{{ error }}:</div>
+	<code>{{ excerpt }}</code>
+	{% if watch and path != "" %}
+	<footer>Edit and save “{{ path }}” to reload this page.</footer>
+	{% endif %}
+</body>
 </html>`

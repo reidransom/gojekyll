@@ -76,9 +76,6 @@ Jigyll is a fork of [gojekyll](https://github.com/osteele/gojekyll). We grateful
 
 ## Attribution
 
-The theme for in-browser error reporting was adapted from facebookincubator/create-react-app.
-
-
 In addition to being totally and obviously inspired by Jekyll and its plugins,
 Jekyll's solid _documentation_ was indispensible --- especially since I wanted
 to implement Jekyll as documented, not port its source code. The [Jekyll
