@@ -3,6 +3,12 @@ $compat-replaced: #1d4ed8;
 $compat-unsupported: #b91c1c;
 $compat-jigyll-only: #15803d;
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $sp-2;
+}
+
 .compat-badge {
   display: inline-block;
   margin-inline-start: $sp-1;
