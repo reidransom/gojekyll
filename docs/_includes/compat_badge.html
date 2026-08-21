@@ -1,0 +1,19 @@
+{%- assign compat_glyph = nil -%}
+{%- assign compat_label = nil -%}
+{%- case include.status -%}
+  {%- when "modified" -%}
+    {%- assign compat_glyph = "●" -%}
+    {%- assign compat_label = "Modified from Ruby Jekyll" -%}
+  {%- when "replaced" -%}
+    {%- assign compat_glyph = "◆" -%}
+    {%- assign compat_label = "Replaced from Ruby Jekyll" -%}
+  {%- when "unsupported" -%}
+    {%- assign compat_glyph = "✕" -%}
+    {%- assign compat_label = "Unsupported in Jigyll" -%}
+  {%- when "jigyll-only" -%}
+    {%- assign compat_glyph = "＋" -%}
+    {%- assign compat_label = "Jigyll-only" -%}
+{%- endcase -%}
+{%- if compat_glyph -%}
+<span class="compat-badge compat-{{ include.status }}"><span aria-hidden="true">{{ compat_glyph }}</span><span class="visually-hidden">{{ compat_label }}</span></span>
+{%- endif -%}
