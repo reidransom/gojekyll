@@ -106,6 +106,7 @@ variables:
             recent posts."
 
 permalinks:
+  status: modified
   summary: "Global `permalink: pretty` also applies to implicit ordinary HTML
             pages; other global styles and custom global patterns apply only to
             posts. Unknown placeholders are build errors, and several date
