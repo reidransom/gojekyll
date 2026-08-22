@@ -12,6 +12,17 @@ A fast, partially-compatible clone of Jekyll — written in Go, with `build` and
 `serve`, directory watch, and live reload. Roughly 20× faster than Ruby Jekyll.
 {: .fs-6 .fw-300 }
 
+| &nbsp;                  | Jigyll                               | Jekyll |
+| ----------------------- | ------------------------------------ | ------ |
+| Stable                  |                                      | ✓      |
+| Fast                    | ✓<br>([~20×Jekyll](./benchmarks.md)) |        |
+| Template language       | Liquid                               | Liquid |
+| SASS                    | ✓                                    | ✓      |
+| Jekyll compatibility    | [partial](./differences.md)          | ✓      |
+| Plugins                 | [some](./plugins.md)                 | yes    |
+| Windows support         | ✓                                    | ✓      |
+| Implementation language | Go                                   | Ruby   |
+
 <p class="hero-actions">
   <a class="btn btn-primary" href="{{ '/docs/' | relative_url }}">Read the docs</a>
   <a class="btn" href="{{ '/docs/installation/' | relative_url }}">Install</a>
