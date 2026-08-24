@@ -3,17 +3,26 @@ title: Installation
 parent: Getting Started
 nav_order: 2
 permalink: /docs/installation/
-description: Install the Jigyll binary via Homebrew, Scoop, Docker, or the install script.
+description: Install the Jigyll binary via mise, Homebrew, Scoop, Docker, or the install script.
 ---
 
 Jigyll ships as a single Go binary — there is **no Ruby, RubyGems, or Bundler**
 to install. Pick whichever method fits your platform.
+
 ## Install script (macOS / Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/reidransom/jigyll/main/install.sh | bash
 ```
 
+## mise (macOS / Linux / Windows)
+
+Install the latest release and make `jigyll` available globally with
+[`mise`](https://mise.jdx.dev):
+
+```bash
+mise use --global github:reidransom/jigyll
+```
 
 ## Homebrew (macOS / Linux)
 
@@ -44,8 +53,15 @@ docker run --rm -v "$PWD:/site" ghcr.io/reidransom/jigyll build
 go install github.com/reidransom/jigyll@latest
 ```
 
-Building from source requires `sass` (dart-sass) on your `PATH` for SCSS
-support.
+Building from source requires the standalone Dart Sass `sass` executable on
+your `PATH` for SCSS support. Install the pinned version globally with
+[mise](https://mise.jdx.dev):
+
+```bash
+mise use --global github:sass/dart-sass@1.98.0
+```
+
+Confirm the installation with `sass --version`.
 
 ## Optional: shell completion
 
