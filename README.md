@@ -16,6 +16,8 @@ live reload.
 curl -fsSL https://raw.githubusercontent.com/reidransom/jigyll/main/install.sh | bash
 ```
 
+The installer also installs Dart Sass if `sass` is not detected on your `PATH`.
+
 [Find other installation methods in the documentation.](https://jigyll.r2ware.app/docs/installation/)
 
 
