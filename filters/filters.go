@@ -196,7 +196,7 @@ func groupByExpFilter(array []map[string]interface{}, name string, expr expressi
 		return nil, nil
 	}
 	groups := map[interface{}][]interface{}{}
-	for i := 0; i < rt.Len(); i++ {
+	for i := range rt.Len() {
 		item := rt.Index(i).Interface()
 		key, err := expr.Bind(name, item).Evaluate()
 		if err != nil {
@@ -222,21 +222,17 @@ func groupByFilter(array []map[string]interface{}, property string) []map[string
 	if rt.Kind() == reflect.Array && rt.Kind() != reflect.Slice {
 		return nil
 	}
-	groups := map[interface{}][]interface{}{}
+	groups := map[string][]interface{}{}
 	for i := range rt.Len() {
 		irt := rt.Index(i)
-		key := interface{}("")
+		key := ""
 		if irt.Kind() == reflect.Map && irt.Type().Key().Kind() == reflect.String {
 			krt := irt.MapIndex(reflect.ValueOf(property))
 			if krt.IsValid() && krt.CanInterface() && krt.Interface() != nil {
-				key = krt.Interface()
+				key = fmt.Sprint(krt.Interface())
 			}
 		}
-		if group, found := groups[key]; found {
-			groups[key] = append(group, irt.Interface())
-		} else {
-			groups[key] = []interface{}{irt.Interface()}
-		}
+		groups[key] = append(groups[key], irt.Interface())
 	}
 	var result []map[string]interface{}
 	for k, v := range groups {
