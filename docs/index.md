@@ -15,7 +15,7 @@ A fast, partially-compatible clone of Jekyll — written in Go, with `build` and
 | &nbsp;                  | Jigyll                               | Jekyll |
 | ----------------------- | ------------------------------------ | ------ |
 | Stable                  |                                      | ✓      |
-| Fast                    | ✓<br>([~20×Jekyll](./benchmarks.md)) |        |
+| Fast                    | ✓ ([~20×Jekyll]({{ '/docs/benchmarks/' | relative_url }})) |        |
 | Template language       | Liquid                               | Liquid |
 | SASS                    | ✓                                    | ✓      |
 | Jekyll compatibility    | [partial](./differences.md)          | ✓      |
