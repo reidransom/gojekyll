@@ -12,6 +12,7 @@ RUN git clone https://github.com/sass/dart-sass.git /dart-sass && \
 
 FROM golangci/golangci-lint:latest AS golangci-lint
 FROM golang:latest AS jigyll
+ARG VERSION=develop
 
 ADD . /jigyll
 
@@ -22,11 +23,11 @@ WORKDIR /jigyll
 
 RUN go test ./...
 RUN golangci-lint run
-RUN go build main.go
+RUN go build -ldflags "-s -w -X github.com/reidransom/jigyll/version.Version=${VERSION}" -o /usr/bin/jigyll .
 
 FROM debian:stable-slim
 
-COPY --from=jigyll /jigyll/main /usr/bin/jigyll
+COPY --from=jigyll /usr/bin/jigyll /usr/bin/jigyll
 COPY --from=sass /dart-sass/bin/sass.exe /usr/bin/sass
 
 WORKDIR /app
