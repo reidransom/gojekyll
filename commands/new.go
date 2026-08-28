@@ -4,6 +4,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"os/exec"
@@ -18,7 +19,7 @@ var (
 	newTheme = new.Flag("theme", "Git URL of a theme to install").String()
 )
 
-//go:embed starter/_config.yml starter/_layouts/default.html starter/404.html starter/index.md starter/.gitignore
+//go:embed all:starter
 var starterFiles embed.FS
 
 func newCommand() error {
@@ -106,39 +107,34 @@ func writeStarterSite(root, themeName string) error {
 		}
 	}
 
-	config, err := starterFiles.ReadFile("starter/_config.yml")
-	if err != nil {
-		return fmt.Errorf("read embedded config: %w", err)
-	}
-	if themeName != "" {
-		config = append(config, "theme: "+themeName+"\n"...)
-	}
-	if err := writeStarterFile(root, "_config.yml", config); err != nil {
-		return err
-	}
-	if err := writeEmbeddedStarterFile(root, "index.md"); err != nil {
-		return err
-	}
-	if err := writeEmbeddedStarterFile(root, "404.html"); err != nil {
-		return err
-	}
-	if err := writeEmbeddedStarterFile(root, ".gitignore"); err != nil {
-		return err
-	}
-	if themeName == "" {
-		if err := writeEmbeddedStarterFile(root, "_layouts/default.html"); err != nil {
-			return err
+	return fs.WalkDir(starterFiles, "starter", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return fmt.Errorf("walk embedded starter path %q: %w", path, walkErr)
 		}
-	}
-	return nil
-}
 
-func writeEmbeddedStarterFile(root, path string) error {
-	content, err := starterFiles.ReadFile("starter/" + path)
-	if err != nil {
-		return fmt.Errorf("read embedded starter file %q: %w", path, err)
-	}
-	return writeStarterFile(root, path, content)
+		if path == "starter" {
+			return nil
+		}
+		relativePath := strings.TrimPrefix(path, "starter/")
+		if entry.IsDir() {
+			if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(relativePath)), 0o755); err != nil {
+				return fmt.Errorf("create starter directory %q: %w", relativePath, err)
+			}
+			return nil
+		}
+		if themeName != "" && relativePath == "_layouts/default.html" {
+			return nil
+		}
+
+		content, err := starterFiles.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read embedded starter file %q: %w", relativePath, err)
+		}
+		if themeName != "" && relativePath == "_config.yml" {
+			content = append(content, "theme: "+themeName+"\n"...)
+		}
+		return writeStarterFile(root, filepath.FromSlash(relativePath), content)
+	})
 }
 
 func writeStarterFile(root, path string, content []byte) error {
