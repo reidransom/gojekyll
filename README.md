@@ -16,10 +16,22 @@ live reload.
 curl -fsSL https://raw.githubusercontent.com/reidransom/jigyll/main/install.sh | bash
 ```
 
+The installer also installs Dart Sass if `sass` is not detected on your `PATH`.
+
 [Find other installation methods in the documentation.](https://jigyll.r2ware.app/docs/installation/)
 
 
 ## Development
+
+Development and tests require the standalone Dart Sass `sass` executable on your `PATH`.
+Install the pinned version globally with [mise](https://mise.jdx.dev):
+
+```bash
+mise use --global github:sass/dart-sass@1.98.0
+```
+
+Then confirm the installation with `sass --version`. For other installation methods,
+see the official [Sass command-line installation instructions](https://sass-lang.com/install/#command-line).
 
 This project uses [just](https://github.com/casey/just) as a command runner. Run `just` to see available recipes:
 
