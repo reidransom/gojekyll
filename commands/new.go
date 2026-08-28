@@ -18,7 +18,7 @@ var (
 	newTheme = new.Flag("theme", "Git URL of a theme to install").String()
 )
 
-//go:embed starter/_config.yml starter/_layouts/default.html starter/index.md starter/.gitignore
+//go:embed starter/_config.yml starter/_layouts/default.html starter/404.html starter/index.md starter/.gitignore
 var starterFiles embed.FS
 
 func newCommand() error {
@@ -117,6 +117,9 @@ func writeStarterSite(root, themeName string) error {
 		return err
 	}
 	if err := writeEmbeddedStarterFile(root, "index.md"); err != nil {
+		return err
+	}
+	if err := writeEmbeddedStarterFile(root, "404.html"); err != nil {
 		return err
 	}
 	if err := writeEmbeddedStarterFile(root, ".gitignore"); err != nil {

@@ -19,6 +19,7 @@ func TestScaffoldNewSiteDefault(t *testing.T) {
 	for _, path := range []string{
 		"_config.yml",
 		"_layouts/default.html",
+		"404.html",
 		"index.md",
 		".gitignore",
 	} {
@@ -38,6 +39,9 @@ func TestScaffoldNewSiteDefault(t *testing.T) {
 	home, err := os.ReadFile(filepath.Join(target, "_site", "index.html"))
 	require.NoError(t, err)
 	require.Contains(t, string(home), "Welcome to Jigyll")
+	notFound, err := os.ReadFile(filepath.Join(target, "_site", "404.html"))
+	require.NoError(t, err)
+	require.Contains(t, string(notFound), "<h1>404</h1>")
 }
 
 func TestParseAndRunNew(t *testing.T) {
@@ -95,11 +99,15 @@ func TestScaffoldNewSiteTheme(t *testing.T) {
 	_, err = os.Stat(filepath.Join(target, "_layouts", "default.html"))
 	require.True(t, errors.Is(err, os.ErrNotExist))
 	require.FileExists(t, filepath.Join(target, "_theme", "starter-theme", "_layouts", "default.html"))
+	require.FileExists(t, filepath.Join(target, "404.html"))
 
 	require.NoError(t, ParseAndRun([]string{"build", "-s", target, "-q"}))
 	home, err := os.ReadFile(filepath.Join(target, "_site", "index.html"))
 	require.NoError(t, err)
 	require.Contains(t, string(home), "Theme layout")
+	notFound, err := os.ReadFile(filepath.Join(target, "_site", "404.html"))
+	require.NoError(t, err)
+	require.Contains(t, string(notFound), "Theme layout")
 }
 
 func newThemeRepository(t *testing.T, layout string) string {
