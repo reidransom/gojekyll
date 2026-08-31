@@ -1,4 +1,4 @@
-Rules for agents to follow.
+# Documentation site
 
 ## Local development
 
@@ -9,7 +9,7 @@ Use `servd which jigyll` to see detailed info including path and command.
 ## Production deployments
 
 Deployments are fully automated when code is pushed to `origin main` so do not push
-code to `origin`.  Pause for manual review.
+code to `origin`. Pause for manual review.
 
 Note: The production deploy pipeline copied to CDN with [`cdnware`](https://github.com/r2waredev/cdnware), the dependency-less, config-less, web builder.
 
