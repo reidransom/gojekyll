@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/pkg/browser"
 	"github.com/reidransom/jigyll/site"
@@ -24,6 +25,7 @@ type Server struct {
 	m          sync.Mutex
 	Site       *site.Site
 	liveReload *liveReloadTransport
+	errorOutput io.Writer
 }
 
 // Run starts a server on the address configured for the site.
@@ -104,15 +106,15 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 		site     = s.Site
 		urlpath  = r.URL.Path
 		p, found = site.URLPage(urlpath)
+		w        = &responseWriter{Writer: rw}
 	)
 	if !found {
 		rw.WriteHeader(http.StatusNotFound)
 		p, found = site.Routes["/404.html"]
 	}
 	if !found {
-		_, err := fmt.Fprintf(rw, "404 page not found: %s\n", urlpath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing HTTP response: %s", err)
+		if _, err := fmt.Fprintf(w, "404 page not found: %s\n", urlpath); err != nil {
+			s.logResponseWriteError(r, err)
 		}
 		return
 	}
@@ -120,28 +122,67 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 	if mimeType != "" {
 		rw.Header().Set("Content-Type", mimeType)
 	}
-	var w io.Writer = rw
+	var documentWriter io.Writer = w
 	if site.Config().Watch && strings.HasPrefix(mimeType, "text/html;") {
-		w = NewLiveReloadInjector(w)
+		documentWriter = NewLiveReloadInjector(documentWriter)
 	}
-	err := site.WriteDocument(w, p)
+	renderErr := site.WriteDocument(documentWriter, p)
+	if renderErr == nil {
+		return
+	}
+	if w.err != nil {
+		s.logResponseWriteError(r, w.err)
+		return
+	}
+
+	fmt.Fprintf(s.errorWriter(), "Error rendering %s: %s\n", urlpath, renderErr)
+	eng := liquid.NewEngine()
+	excerpt, path := fileErrorContext(renderErr)
+	out, err := eng.ParseAndRenderString(renderErrorTemplate, liquid.Bindings{
+		"error":   fmt.Sprint(renderErr),
+		"excerpt": excerpt,
+		"path":    path,
+		"watch":   site.Config().Watch,
+	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error rendering %s: %s\n", urlpath, err)
-		eng := liquid.NewEngine()
-		excerpt, path := fileErrorContext(err)
-		out, e := eng.ParseAndRenderString(renderErrorTemplate, liquid.Bindings{
-			"error":   fmt.Sprint(err),
-			"excerpt": excerpt,
-			"path":    path,
-			"watch":   site.Config().Watch,
-		})
-		if e != nil {
-			panic(e)
-		}
-		if _, err := io.WriteString(w, out); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing HTTP response: %s", err)
-		}
+		panic(err)
 	}
+	if _, err := io.WriteString(documentWriter, out); err != nil {
+		s.logResponseWriteError(r, err)
+	}
+}
+
+type responseWriter struct {
+	io.Writer
+	err error
+}
+
+func (w *responseWriter) Write(p []byte) (int, error) {
+	n, err := w.Writer.Write(p)
+	if err != nil && w.err == nil {
+		w.err = err
+	}
+	return n, err
+}
+
+func (s *Server) errorWriter() io.Writer {
+	if s.errorOutput != nil {
+		return s.errorOutput
+	}
+	return os.Stderr
+}
+
+func (s *Server) logResponseWriteError(r *http.Request, err error) {
+	if expectedDisconnect(err) {
+		return
+	}
+	fmt.Fprintf(s.errorWriter(), "Error writing HTTP response for %s: %s\n", r.URL.String(), err)
+}
+
+func expectedDisconnect(err error) bool {
+	return errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, syscall.ECONNRESET)
 }
 
 func fileErrorContext(e error) (s, path string) {
