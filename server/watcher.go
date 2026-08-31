@@ -2,7 +2,10 @@ package server
 
 import (
 	"fmt"
+	"mime"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/reidransom/jigyll/site"
@@ -23,31 +26,59 @@ func (s *Server) watchReload() error {
 			site := s.Site
 			s.m.Unlock()
 
-			// Resolves filenames to URLS *before* reloading the site, in case the latter
-			// changes the url -> filename routes.
-			urls := map[string]bool{}
-			for _, rel := range change.Paths {
-				url, ok := site.FilenameURLPath(rel)
-				if ok {
-					urls[url] = true
-				}
-			}
-			if site.RequiresFullReload(change.Paths) {
-				for u := range site.Routes {
-					urls[u] = true
-				}
-			}
+			// Resolve an entire watch batch before rebuilding, while its source
+			// paths still match the current site's routes.
+			intent := newLiveReloadIntent(site, change.Paths)
 			// reload the site
 			s.reload(change)
-			// tell the pages their files (may have) changed
+			// Deliver the already-built batch intent after the new site is ready.
 			if liveReload := s.currentLiveReloader(); liveReload != nil {
-				for url := range urls {
-					liveReload.Reload(url)
-				}
+				liveReload.Deliver(intent)
 			}
 		}
 	}()
 	return nil
+}
+
+// liveReloadIntent describes the minimum work a client must perform for one
+// watch batch. A page reload always takes precedence over resource updates.
+type liveReloadIntent struct {
+	pageReload    bool
+	resourcePaths []string
+}
+
+func newLiveReloadIntent(s *site.Site, paths []string) liveReloadIntent {
+	if s.RequiresFullReload(paths) {
+		return liveReloadIntent{pageReload: true}
+	}
+
+	var (
+		intent liveReloadIntent
+		seen   map[string]struct{}
+	)
+	for _, path := range paths {
+		resourcePath, found := s.FilenameURLPath(path)
+		if !found {
+			continue
+		}
+		if !isLiveReloadResource(resourcePath) {
+			return liveReloadIntent{pageReload: true}
+		}
+		if seen == nil {
+			seen = make(map[string]struct{}, len(paths))
+		}
+		if _, duplicate := seen[resourcePath]; duplicate {
+			continue
+		}
+		seen[resourcePath] = struct{}{}
+		intent.resourcePaths = append(intent.resourcePaths, resourcePath)
+	}
+	return intent
+}
+
+func isLiveReloadResource(path string) bool {
+	extension := strings.ToLower(filepath.Ext(path))
+	return extension == ".css" || strings.HasPrefix(mime.TypeByExtension(extension), "image/")
 }
 
 func (s *Server) reload(change site.FilesEvent) {

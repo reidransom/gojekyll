@@ -135,6 +135,17 @@ func (t *liveReloadTransport) Reload(path string) {
 	t.broadcast(liveReloadReload{Command: "reload", Path: path, LiveCSS: true})
 }
 
+// Deliver broadcasts the work described by one watch batch.
+func (t *liveReloadTransport) Deliver(intent liveReloadIntent) {
+	if intent.pageReload {
+		t.Reload("")
+		return
+	}
+	for _, path := range intent.resourcePaths {
+		t.Reload(path)
+	}
+}
+
 func (t *liveReloadTransport) Alert(message string) {
 	t.broadcast(liveReloadAlert{Command: "alert", Message: message})
 }
