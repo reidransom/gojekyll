@@ -21,20 +21,9 @@ func (s *Server) watchReload() error {
 	}
 	go func() {
 		for change := range changes {
-			// Get current site reference with lock protection
-			s.m.Lock()
-			site := s.Site
-			s.m.Unlock()
-
-			// Resolve an entire watch batch before rebuilding, while its source
-			// paths still match the current site's routes.
-			intent := newLiveReloadIntent(site, change.Paths)
-			// reload the site
+			batch := s.liveReloadBatch(change)
 			s.reload(change)
-			// Deliver the already-built batch intent after the new site is ready.
-			if liveReload := s.currentLiveReloader(); liveReload != nil {
-				liveReload.Deliver(intent)
-			}
+			batch.Deliver()
 		}
 	}()
 	return nil
@@ -76,6 +65,28 @@ func newLiveReloadIntent(s *site.Site, paths []string) liveReloadIntent {
 	return intent
 }
 
+// liveReloadBatch captures the intent for one watch event while its source
+// paths still resolve against the site that observed the event.
+func (s *Server) liveReloadBatch(change site.FilesEvent) liveReloadBatch {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return liveReloadBatch{
+		transport: s.liveReload,
+		intent:    newLiveReloadIntent(s.Site, change.Paths),
+	}
+}
+
+type liveReloadBatch struct {
+	transport *liveReloadTransport
+	intent    liveReloadIntent
+}
+
+func (b liveReloadBatch) Deliver() {
+	if b.transport != nil {
+		b.transport.Deliver(b.intent)
+	}
+}
+
 func isLiveReloadResource(path string) bool {
 	extension := strings.ToLower(filepath.Ext(path))
 	return extension == ".css" || strings.HasPrefix(mime.TypeByExtension(extension), "image/")
@@ -92,7 +103,7 @@ func (s *Server) reload(change site.FilesEvent) {
 	if err != nil {
 		fmt.Println()
 		fmt.Fprintln(os.Stderr, err.Error())
-		if liveReload := s.currentLiveReloader(); liveReload != nil {
+		if liveReload := s.liveReload; liveReload != nil {
 			liveReload.Alert(fmt.Sprintf("Error reading site configuration: %s", err))
 		}
 		return

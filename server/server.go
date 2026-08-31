@@ -46,9 +46,7 @@ func (s *Server) Run(open bool, logger func(label, value string)) error {
 
 	logger("Server address:", "http://"+address+"/")
 	if cfg.Watch {
-		if err := s.startLiveReloader(); err != nil {
-			return err
-		}
+		s.startLiveReloader()
 		if err := s.watchReload(); err != nil {
 			return err
 		}
@@ -73,9 +71,7 @@ func (s *Server) Serve(listener net.Listener) error {
 	}
 
 	if s.Site.Config().Watch {
-		if err := s.startLiveReloader(); err != nil {
-			return err
-		}
+		s.startLiveReloader()
 		defer s.stopLiveReloader()
 	}
 
@@ -87,7 +83,9 @@ func (s *Server) routes() http.Handler {
 		if s.Site.Config().Watch {
 			switch r.URL.Path {
 			case liveReloadScriptPath:
-				s.currentLiveReloader().ServeScript(rw, r)
+				if err := s.currentLiveReloader().ServeScript(rw, r); err != nil {
+					s.logResponseWriteError(r, err)
+				}
 				return
 			case liveReloadWebSocketPath:
 				s.currentLiveReloader().ServeWebSocket(rw, r)

@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/reidransom/jigyll/config"
 	"github.com/reidransom/jigyll/site"
 	"github.com/stretchr/testify/require"
@@ -68,12 +67,12 @@ func TestServeSupportsSameOriginLiveReloadThroughReverseProxy(t *testing.T) {
 	require.Contains(t, response.Header.Get("Content-Type"), "application/javascript")
 	require.Contains(t, string(client), "LiveReload")
 
-	firstConnection := connectProxiedLiveReload(t, first.url)
+	firstConnection := connectLiveReload(t, first.url)
 	defer firstConnection.Close()
-	secondConnection := connectProxiedLiveReload(t, second.url)
+	secondConnection := connectLiveReload(t, second.url)
 	defer secondConnection.Close()
-	waitForProxiedLiveReloadConnection(t, first.server)
-	waitForProxiedLiveReloadConnection(t, second.server)
+	waitForLiveReloadConnection(t, first.server)
+	waitForLiveReloadConnection(t, second.server)
 
 	first.server.currentLiveReloader().Reload("/first")
 	var firstReload liveReloadReload
@@ -85,9 +84,9 @@ func TestServeSupportsSameOriginLiveReloadThroughReverseProxy(t *testing.T) {
 	require.Error(t, secondConnection.ReadJSON(&unexpectedReload))
 	require.NoError(t, secondConnection.Close())
 
-	secondConnection = connectProxiedLiveReload(t, second.url)
+	secondConnection = connectLiveReload(t, second.url)
 	defer secondConnection.Close()
-	waitForProxiedLiveReloadConnection(t, second.server)
+	waitForLiveReloadConnection(t, second.server)
 	second.server.currentLiveReloader().Reload("/second")
 	var secondReload liveReloadReload
 	require.NoError(t, secondConnection.ReadJSON(&secondReload))
@@ -134,17 +133,17 @@ func TestServeDeliversBatchReloadProtocolThroughReverseProxy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			proxied := startProxiedIntegrationServer(t, tt.flags, integrationRoutes("site"), nil)
-			connection := connectProxiedLiveReload(t, proxied.url)
+			connection := connectLiveReload(t, proxied.url)
 			defer connection.Close()
-			waitForProxiedLiveReloadConnection(t, proxied.server)
+			waitForLiveReloadConnection(t, proxied.server)
 
-			proxied.server.currentLiveReloader().Deliver(newLiveReloadIntent(proxied.server.Site, tt.paths))
+			proxied.server.liveReloadBatch(site.FilesEvent{Paths: tt.paths}).Deliver()
 			for _, want := range tt.want {
 				var got liveReloadReload
 				require.NoError(t, connection.ReadJSON(&got))
 				require.Equal(t, want, got)
 			}
-			requireNoProxiedLiveReloadMessage(t, connection)
+			requireNoLiveReloadMessage(t, connection)
 		})
 	}
 }
@@ -268,33 +267,3 @@ func startProxiedIntegrationServer(t *testing.T, flags config.Flags, routes map[
 	return proxiedIntegrationServer{url: "http://" + proxyListener.Addr().String(), server: server}
 }
 
-func connectProxiedLiveReload(t *testing.T, serverURL string) *websocket.Conn {
-	t.Helper()
-	connection, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(serverURL, "http")+liveReloadWebSocketPath, nil)
-	require.NoError(t, err)
-	var hello liveReloadHello
-	require.NoError(t, connection.ReadJSON(&hello))
-	require.Equal(t, "hello", hello.Command)
-	require.NoError(t, connection.WriteJSON(liveReloadClientHello{
-		Command:   "hello",
-		Protocols: []string{liveReloadProtocols[0]},
-	}))
-	return connection
-}
-
-func waitForProxiedLiveReloadConnection(t *testing.T, server *Server) {
-	t.Helper()
-	require.Eventually(t, func() bool {
-		transport := server.currentLiveReloader()
-		transport.mu.RLock()
-		defer transport.mu.RUnlock()
-		return len(transport.connections) == 1
-	}, time.Second, time.Millisecond)
-}
-
-func requireNoProxiedLiveReloadMessage(t *testing.T, connection *websocket.Conn) {
-	t.Helper()
-	require.NoError(t, connection.SetReadDeadline(time.Now().Add(100*time.Millisecond)))
-	var message liveReloadReload
-	require.Error(t, connection.ReadJSON(&message))
-}

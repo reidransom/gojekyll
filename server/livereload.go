@@ -28,13 +28,12 @@ var liveReloadProtocols = []string{
 
 // startLiveReloader makes the server-owned transport available without opening
 // an auxiliary listener. It is safe to call more than once before serving.
-func (s *Server) startLiveReloader() error {
+func (s *Server) startLiveReloader() {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if s.liveReload == nil || s.liveReload.closed() {
 		s.liveReload = newLiveReloadTransport()
 	}
-	return nil
 }
 
 func (s *Server) stopLiveReloader() {
@@ -74,13 +73,14 @@ func (t *liveReloadTransport) closed() bool {
 	return t.isClosed
 }
 
-func (t *liveReloadTransport) ServeScript(rw http.ResponseWriter, r *http.Request) {
+func (t *liveReloadTransport) ServeScript(rw http.ResponseWriter, r *http.Request) error {
 	if r.Method != http.MethodGet {
 		rw.WriteHeader(http.StatusMethodNotAllowed)
-		return
+		return nil
 	}
 	rw.Header().Set("Content-Type", "application/javascript")
-	_, _ = io.WriteString(rw, lrserver.JS)
+	_, err := io.WriteString(rw, lrserver.JS)
+	return err
 }
 
 func (t *liveReloadTransport) ServeWebSocket(rw http.ResponseWriter, r *http.Request) {

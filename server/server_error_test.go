@@ -93,6 +93,42 @@ func TestUnexpectedResponseWriteFailureIsLoggedOnceWithURL(t *testing.T) {
 	require.Equal(t, "Error writing HTTP response for /articles?preview=1: socket write failed\n", diagnostics.String())
 }
 
+func TestLiveReloadScriptWriteFailuresUseHTTPResponseClassification(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		err         error
+		diagnostics string
+	}{
+		{
+			name: "expected disconnect is quiet",
+			err:  &net.OpError{Op: "write", Net: "tcp", Err: syscall.EPIPE},
+		},
+		{
+			name:        "unexpected error includes URL",
+			err:         errors.New("script write failed"),
+			diagnostics: "Error writing HTTP response for /livereload.js?cache=1: script write failed\n",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var diagnostics bytes.Buffer
+			server := &Server{
+				Site:        site.New(config.Flags{Watch: true}),
+				errorOutput: &diagnostics,
+			}
+			server.startLiveReloader()
+			response := &errorHandlingResponseWriter{
+				header: make(http.Header),
+				err:    tt.err,
+			}
+
+			server.routes().ServeHTTP(response, httptest.NewRequest(http.MethodGet, "http://example.test/livereload.js?cache=1", nil))
+
+			require.Equal(t, 1, response.writes)
+			require.Equal(t, tt.diagnostics, diagnostics.String())
+		})
+	}
+}
+
 func errorHandlingTestServer(document site.Document, output io.Writer) *Server {
 	testSite := site.New(config.Flags{})
 	testSite.Routes = map[string]site.Document{"/articles": document}
