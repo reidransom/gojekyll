@@ -2,16 +2,18 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/jaschaephraim/lrserver"
 	"github.com/pkg/browser"
 	"github.com/reidransom/jigyll/site"
 	"github.com/reidransom/liquid"
@@ -19,12 +21,12 @@ import (
 
 // Server serves the site on HTTP.
 type Server struct {
-	m    sync.Mutex
-	Site *site.Site
-	lr   *lrserver.Server
+	m          sync.Mutex
+	Site       *site.Site
+	liveReload *liveReloadTransport
 }
 
-// Run runs the server.
+// Run starts a server on the address configured for the site.
 func (s *Server) Run(open bool, logger func(label, value string)) error {
 	cfg := s.Site.Config()
 	// Only clear URL if JEKYLL_URL is not set
@@ -33,7 +35,13 @@ func (s *Server) Run(open bool, logger func(label, value string)) error {
 	} else {
 		s.Site.SetAbsoluteURL("")
 	}
-	address := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	address := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+
 	logger("Server address:", "http://"+address+"/")
 	if cfg.Watch {
 		if err := s.startLiveReloader(); err != nil {
@@ -43,18 +51,49 @@ func (s *Server) Run(open bool, logger func(label, value string)) error {
 			return err
 		}
 	}
-	http.HandleFunc("/", s.handler)
-	c := make(chan error)
-	go func() {
-		c <- http.ListenAndServe(address, nil)
-	}()
 	logger("Server running...", "press ctrl-c to stop.")
 	if open {
 		if err := browser.OpenURL("http://" + address); err != nil {
 			fmt.Println("Error opening page:", err)
 		}
 	}
-	return <-c
+	return s.Serve(listener)
+}
+
+// Serve serves the site and its watch-mode LiveReload endpoints on listener.
+// Closing listener stops the HTTP server and releases all LiveReload connections.
+func (s *Server) Serve(listener net.Listener) error {
+	if listener == nil {
+		return errors.New("serve requires a listener")
+	}
+	if s.Site == nil {
+		return errors.New("serve requires a site")
+	}
+
+	if s.Site.Config().Watch {
+		if err := s.startLiveReloader(); err != nil {
+			return err
+		}
+		defer s.stopLiveReloader()
+	}
+
+	return (&http.Server{Handler: s.routes()}).Serve(listener)
+}
+
+func (s *Server) routes() http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		if s.Site.Config().Watch {
+			switch r.URL.Path {
+			case liveReloadScriptPath:
+				s.currentLiveReloader().ServeScript(rw, r)
+				return
+			case liveReloadWebSocketPath:
+				s.currentLiveReloader().ServeWebSocket(rw, r)
+				return
+			}
+		}
+		s.handler(rw, r)
+	})
 }
 
 func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
@@ -82,7 +121,7 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", mimeType)
 	}
 	var w io.Writer = rw
-	if strings.HasPrefix(mimeType, "text/html;") {
+	if site.Config().Watch && strings.HasPrefix(mimeType, "text/html;") {
 		w = NewLiveReloadInjector(w)
 	}
 	err := site.WriteDocument(w, p)

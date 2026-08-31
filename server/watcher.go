@@ -40,8 +40,10 @@ func (s *Server) watchReload() error {
 			// reload the site
 			s.reload(change)
 			// tell the pages their files (may have) changed
-			for url := range urls {
-				s.lr.Reload(url)
+			if liveReload := s.currentLiveReloader(); liveReload != nil {
+				for url := range urls {
+					liveReload.Reload(url)
+				}
 			}
 		}
 	}()
@@ -59,7 +61,9 @@ func (s *Server) reload(change site.FilesEvent) {
 	if err != nil {
 		fmt.Println()
 		fmt.Fprintln(os.Stderr, err.Error())
-		s.lr.Alert(fmt.Sprintf("Error reading site configuration: %s", err))
+		if liveReload := s.currentLiveReloader(); liveReload != nil {
+			liveReload.Alert(fmt.Sprintf("Error reading site configuration: %s", err))
+		}
 		return
 	}
 	s.Site = site
