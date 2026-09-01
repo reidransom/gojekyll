@@ -42,7 +42,7 @@ type errorHandlingResponseWriter struct {
 }
 
 func (w *errorHandlingResponseWriter) Header() http.Header { return w.header }
-func (w *errorHandlingResponseWriter) WriteHeader(int)      {}
+func (w *errorHandlingResponseWriter) WriteHeader(int)     {}
 func (w *errorHandlingResponseWriter) Write(p []byte) (int, error) {
 	w.writes++
 	return 0, w.err

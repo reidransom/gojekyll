@@ -195,4 +195,3 @@ func startTestServerWithFlags(t *testing.T, flags config.Flags) (string, *Server
 	})
 	return "http://" + listener.Addr().String(), server
 }
-

@@ -22,9 +22,9 @@ import (
 
 // Server serves the site on HTTP.
 type Server struct {
-	m          sync.Mutex
-	Site       *site.Site
-	liveReload *liveReloadTransport
+	m           sync.Mutex
+	Site        *site.Site
+	liveReload  *liveReloadTransport
 	errorOutput io.Writer
 }
 

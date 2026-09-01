@@ -26,12 +26,12 @@ type proxyIntegrationDocument struct {
 	write             func(io.Writer) error
 }
 
-func (d proxyIntegrationDocument) URL() string             { return d.url }
-func (d proxyIntegrationDocument) Source() string          { return d.source }
-func (d proxyIntegrationDocument) OutputExt() string       { return path.Ext(d.url) }
-func (d proxyIntegrationDocument) Published() bool         { return true }
-func (d proxyIntegrationDocument) IsStatic() bool          { return false }
-func (d proxyIntegrationDocument) Reload() error           { return nil }
+func (d proxyIntegrationDocument) URL() string       { return d.url }
+func (d proxyIntegrationDocument) Source() string    { return d.source }
+func (d proxyIntegrationDocument) OutputExt() string { return path.Ext(d.url) }
+func (d proxyIntegrationDocument) Published() bool   { return true }
+func (d proxyIntegrationDocument) IsStatic() bool    { return false }
+func (d proxyIntegrationDocument) Reload() error     { return nil }
 func (d proxyIntegrationDocument) Write(w io.Writer) error {
 	if d.write != nil {
 		return d.write(w)
@@ -266,4 +266,3 @@ func startProxiedIntegrationServer(t *testing.T, flags config.Flags, routes map[
 	})
 	return proxiedIntegrationServer{url: "http://" + proxyListener.Addr().String(), server: server}
 }
-
