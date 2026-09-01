@@ -14,9 +14,10 @@ const (
 	liveReloadWebSocketPath = "/livereload"
 )
 
-// liveReloadScriptTag is inserted into watched HTML pages. Its origin-relative
-// URL lets the bundled client derive its endpoint from the page origin.
-var liveReloadScriptTag = []byte(`<script src="/livereload.js"></script>`)
+// liveReloadScriptTag leaves the client port blank so it uses the script's
+// origin instead of LiveReload's default port 35729. The client still retains
+// an explicit port from the script URL when Jigyll is accessed directly.
+var liveReloadScriptTag = []byte(`<script src="/livereload.js?port="></script>`)
 
 var liveReloadProtocols = []string{
 	"http://livereload.com/protocols/official-7",

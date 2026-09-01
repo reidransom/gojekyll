@@ -33,7 +33,7 @@ func TestWatchServerOwnsLiveReloadRoutes(t *testing.T) {
 	body, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 	require.NoError(t, response.Body.Close())
-	require.Contains(t, string(body), `src="/livereload.js"`)
+	require.Contains(t, string(body), `src="/livereload.js?port="`)
 
 	response, err = http.Get(serverURL + liveReloadScriptPath)
 	require.NoError(t, err)

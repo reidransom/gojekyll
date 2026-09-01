@@ -55,7 +55,7 @@ func TestServeSupportsSameOriginLiveReloadThroughReverseProxy(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, response.Body.Close())
 	require.Equal(t, http.StatusOK, response.StatusCode)
-	require.Contains(t, string(body), `src="/livereload.js"`)
+	require.Contains(t, string(body), `src="/livereload.js?port="`)
 	require.NotContains(t, string(body), "localhost")
 
 	response, err = http.Get(first.url + liveReloadScriptPath)
