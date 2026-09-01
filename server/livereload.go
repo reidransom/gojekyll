@@ -84,7 +84,8 @@ func (t *liveReloadTransport) ServeScript(rw http.ResponseWriter, r *http.Reques
 }
 
 func (t *liveReloadTransport) ServeWebSocket(rw http.ResponseWriter, r *http.Request) {
-	connection, err := (websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}).Upgrade(rw, r, nil)
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	connection, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
 		return
 	}
