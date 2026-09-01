@@ -174,7 +174,7 @@ func (s *Server) logResponseWriteError(r *http.Request, err error) {
 	if expectedDisconnect(err) {
 		return
 	}
-	fmt.Fprintf(s.errorWriter(), "Error writing HTTP response for %s: %s\n", r.URL.String(), err)
+	fmt.Fprintf(s.errorWriter(), "Error writing HTTP response for %s: %s\n", r.URL.RequestURI(), err)
 }
 
 func expectedDisconnect(err error) bool {

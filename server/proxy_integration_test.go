@@ -162,7 +162,7 @@ func TestServeClassifiesProxiedCancellationAndRenderFailures(t *testing.T) {
 			url:    "/slow.html",
 			source: "slow.html",
 			write: func(w io.Writer) error {
-				if _, err := io.WriteString(w, "response started"); err != nil {
+				if _, err := io.WriteString(w, strings.Repeat("x", 8<<10)); err != nil {
 					writeResult <- err
 					return err
 				}
