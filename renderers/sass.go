@@ -1,7 +1,6 @@
 package renderers
 
 import (
-	"bytes"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -11,13 +10,13 @@ import (
 
 	"github.com/reidransom/jigyll/cache"
 	"github.com/reidransom/jigyll/utils"
-	"github.com/tdewolff/minify"
-	"github.com/tdewolff/minify/css"
 
 	sass "github.com/bep/godartsass/v2"
 )
 
-const sassMIMEType = "text/css"
+// Bump this namespace whenever compiled CSS output changes so persistent cache
+// entries from older Jigyll versions cannot survive the change.
+const sassCacheNamespace = "sass:v2"
 const sassDirName = "_sass"
 
 // copySASSFileIncludes copies sass partials into a temporary directory,
@@ -104,7 +103,7 @@ func (p *Manager) SassIncludePaths() []string {
 
 // WriteSass converts a SASS file and writes it to w.
 func (p *Manager) WriteSass(w io.Writer, b []byte) error {
-	s, err := cache.WithFile(fmt.Sprintf("sass: %s", p.sassHash), string(b), func() (s string, err error) {
+	s, err := cache.WithFile(fmt.Sprintf("%s: %s", sassCacheNamespace, p.sassHash), string(b), func() (s string, err error) {
 		comp, err := p.getSassTranspiler()
 		if err != nil {
 			return "", err
@@ -112,17 +111,12 @@ func (p *Manager) WriteSass(w io.Writer, b []byte) error {
 		res, err := comp.Execute(sass.Args{
 			Source:       string(b),
 			IncludePaths: p.SassIncludePaths(),
+			OutputStyle:  sass.OutputStyleCompressed,
 		})
 		if err != nil {
 			return "", err
 		}
-		m := minify.New()
-		m.AddFunc(sassMIMEType, css.Minify)
-		min := bytes.NewBuffer(make([]byte, 0, len(res.CSS)))
-		if err := m.Minify(sassMIMEType, min, bytes.NewBuffer([]byte(res.CSS))); err != nil {
-			return "", err
-		}
-		return min.String(), nil
+		return res.CSS, nil
 	})
 	if err != nil {
 		return err

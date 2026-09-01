@@ -62,6 +62,30 @@ func TestRenderLiquidBeforeSass(t *testing.T) {
 	}
 }
 
+func TestRenderSassPreservesRequiredWhitespace(t *testing.T) {
+	cfg := config.Default()
+	cfg.Source = t.TempDir()
+	manager, err := New(cfg, Options{})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(manager.sassTempDir))
+	})
+
+	const source = `@layer base {
+  .prose :where(p):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    border: 1px solid red;
+    margin: 1em auto;
+    padding: 1rem 2rem 3rem 4rem;
+    transition: color var(--omarchy-transition), background-color 150ms ease;
+  }
+}`
+	const expected = `@layer base{.prose :where(p):not(:where([class~=not-prose],[class~=not-prose] *)){border:1px solid red;margin:1em auto;padding:1rem 2rem 3rem 4rem;transition:color var(--omarchy-transition),background-color 150ms ease}}`
+	var output bytes.Buffer
+	err = manager.Render(&output, []byte(source), liquid.Bindings{}, "assets/css/site.scss", 1)
+	require.NoError(t, err)
+	require.Equal(t, expected, output.String())
+}
+
 func TestRenderScssifyUsesThemeAndSiteSass(t *testing.T) {
 	siteDir := t.TempDir()
 	themeDir := t.TempDir()
