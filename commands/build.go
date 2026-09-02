@@ -17,28 +17,28 @@ func init() {
 	build.Flag("dry-run", "Dry run").Short('n').BoolVar(&options.DryRun)
 }
 
-func buildCommand(site *site.Site) error {
-	watch := site.Config().Watch
+func buildCommand(s *site.Site) error {
+	watch := s.Config().Watch
 
-	logger.path("Destination:", site.DestDir())
+	logger.path("Destination:", s.DestDir())
 	logger.label("Generating...", "")
 	var (
 		count   int
 		err     error
 		project *site.LocalizedProject
 	)
-	if site.Config().Enabled() {
-		project, count, err = site.BuildLocalizedProject(site)
+	if s.Config().Enabled() {
+		project, count, err = site.BuildLocalizedProject(s)
 	} else {
-		count, err = site.Write()
+		count, err = s.Write()
 	}
 	switch {
 	case err == nil:
 		elapsed := time.Since(commandStartTime)
 		logger.label("", "wrote %d files in %.2fs.", count, elapsed.Seconds())
-		diag := site.Diagnostics()
+		diag := s.Diagnostics()
 		diag.FilesOutput = count
-		if site.Config().Verbose || diag.FilesExcluded+diag.FilesStaticNoFM+diag.FilesUnpublished > 0 {
+		if s.Config().Verbose || diag.FilesExcluded+diag.FilesStaticNoFM+diag.FilesUnpublished > 0 {
 			logger.label("Diagnostics:", "%s", diag.DiagSummary())
 		}
 	case watch:
@@ -47,7 +47,7 @@ func buildCommand(site *site.Site) error {
 		return err
 	}
 
-	if watch && site.Config().Enabled() {
+	if watch && s.Config().Enabled() {
 		if project == nil {
 			return err
 		}
@@ -57,11 +57,11 @@ func buildCommand(site *site.Site) error {
 	// FIXME the watch will miss files that changed during the first build
 	// server watch is implemented inside Server.Run, in contrast to this command
 	if watch {
-		events, err := site.WatchRebuild()
+		events, err := s.WatchRebuild()
 		if err != nil {
 			return err
 		}
-		logger.label("Auto-regeneration:", "enabled for %q", site.SourceDir())
+		logger.label("Auto-regeneration:", "enabled for %q", s.SourceDir())
 		for event := range events {
 			fmt.Print(event)
 		}
