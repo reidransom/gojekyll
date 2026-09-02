@@ -218,7 +218,7 @@ localization:
 	require.Equal(t, true, c.Collections["guides"]["output"])
 	require.Equal(t, "shared", c.m["metadata"].(map[interface{}]interface{})["items"].([]interface{})[0])
 	require.NotContains(t, en.m, "custom")
-	require.Empty(t, c.Localization.Locales["de"].Fallbacks)
+	require.Equal(t, []string{"en"}, c.Localization.Locales["de"].Fallbacks)
 }
 
 func TestLocalizationRemainsOptIn(t *testing.T) {

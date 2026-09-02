@@ -38,6 +38,9 @@ var _ pages.LocalizationContext = (*localizedSiteContext)(nil)
 // LocalizationContext makes the optional page-drop seam available only to
 // prepared locale sites. Ordinary Site values return no localization metadata.
 func (s *Site) LocalizationContext() pages.LocalizationContext {
+	if s.localizationContext == nil {
+		return nil
+	}
 	return s.localizationContext
 }
 

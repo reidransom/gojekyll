@@ -46,6 +46,8 @@ type Site struct {
 	includeStatic    bool
 	localizedSources map[string]struct{}
 	localizationContext *localizedSiteContext
+	removedRoutes    map[string]struct{}
+	outputCandidates []Document
 
 	// Build diagnostics
 	diag BuildDiagnostics
