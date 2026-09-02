@@ -23,11 +23,12 @@ func buildCommand(site *site.Site) error {
 	logger.path("Destination:", site.DestDir())
 	logger.label("Generating...", "")
 	var (
-		count int
-		err   error
+		count   int
+		err     error
+		project *site.LocalizedProject
 	)
 	if site.Config().Enabled() {
-		count, err = site.LocalizedBuild(site)
+		project, count, err = site.BuildLocalizedProject(site)
 	} else {
 		count, err = site.Write()
 	}
@@ -46,10 +47,11 @@ func buildCommand(site *site.Site) error {
 		return err
 	}
 
-	// A localized watcher must rebuild one project generation. The existing
-	// site watcher is intentionally single-site, so do not start it here.
 	if watch && site.Config().Enabled() {
-		return fmt.Errorf("localized watch is not supported by the single-site watcher")
+		if project == nil {
+			return err
+		}
+		return watchLocalizedProject(project)
 	}
 
 	// FIXME the watch will miss files that changed during the first build
@@ -65,6 +67,30 @@ func buildCommand(site *site.Site) error {
 		}
 	} else {
 		logger.label("Auto-regeneration:", "disabled. Use --watch to enable.")
+	}
+	return nil
+}
+
+// watchLocalizedProject observes one project source and replaces only complete
+// published generations. It intentionally never enters the single-site
+// incremental reload path.
+func watchLocalizedProject(project *site.LocalizedProject) error {
+	events, err := project.WatchFiles()
+	if err != nil {
+		return err
+	}
+	logger.label("Auto-regeneration:", "enabled for %q", project.Config().Source)
+	for event := range events {
+		fmt.Printf("Regenerating: %s...", event)
+		start := time.Now()
+		replacement, count, err := project.Rebuild()
+		if err != nil {
+			fmt.Println()
+			fmt.Fprintln(os.Stderr, err)
+			continue
+		}
+		project = replacement
+		logger.label("", "wrote %d files in %.2fs.", count, time.Since(start).Seconds())
 	}
 	return nil
 }

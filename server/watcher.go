@@ -11,19 +11,31 @@ import (
 	"github.com/reidransom/jigyll/site"
 )
 
-// Create a goroutine that rebuilds the site when files change.
+// watchReload observes one source watcher. Localized projects rebuild and
+// replace their complete aggregate snapshot for every event.
 func (s *Server) watchReload() error {
-	// Note: reload swaps in a new site but the watcher still uses the old
-	// site's include/exclude configuration until the server restarts.
-	changes, err := s.Site.WatchFiles()
+	s.m.RLock()
+	project := s.project
+	base := s.Site
+	s.m.RUnlock()
+	var (
+		changes <-chan site.FilesEvent
+		err     error
+	)
+	if project != nil {
+		changes, err = project.WatchFiles()
+	} else {
+		changes, err = base.WatchFiles()
+	}
 	if err != nil {
 		return err
 	}
 	go func() {
 		for change := range changes {
 			batch := s.liveReloadBatch(change)
-			s.reload(change)
-			batch.Deliver()
+			if s.reload(change) {
+				batch.Deliver()
+			}
 		}
 	}()
 	return nil
@@ -66,10 +78,16 @@ func newLiveReloadIntent(s *site.Site, paths []string) liveReloadIntent {
 }
 
 // liveReloadBatch captures the intent for one watch event while its source
-// paths still resolve against the site that observed the event.
+// paths still resolve against the snapshot that observed the event.
 func (s *Server) liveReloadBatch(change site.FilesEvent) liveReloadBatch {
-	s.m.Lock()
-	defer s.m.Unlock()
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if s.project != nil {
+		return liveReloadBatch{
+			transport: s.liveReload,
+			intent:    liveReloadIntent{pageReload: true},
+		}
+	}
 	return liveReloadBatch{
 		transport: s.liveReload,
 		intent:    newLiveReloadIntent(s.Site, change.Paths),
@@ -92,28 +110,50 @@ func isLiveReloadResource(path string) bool {
 	return extension == ".css" || strings.HasPrefix(mime.TypeByExtension(extension), "image/")
 }
 
-func (s *Server) reload(change site.FilesEvent) {
-	s.m.Lock()
-	defer s.m.Unlock()
+func (s *Server) reload(change site.FilesEvent) bool {
+	s.m.RLock()
+	project := s.project
+	current := s.Site
+	liveReload := s.liveReload
+	s.m.RUnlock()
 
-	// similar code to site.WatchRebuild
 	fmt.Printf("Re-reading: %v %v...\n", change, change.Paths)
 	start := time.Now()
-	site, err := s.Site.Reloaded(change.Paths)
-	if err != nil {
-		fmt.Println()
-		fmt.Fprintln(os.Stderr, err.Error())
-		if liveReload := s.liveReload; liveReload != nil {
-			liveReload.Alert(fmt.Sprintf("Error reading site configuration: %s", err))
+	if project != nil {
+		replacement, _, err := project.Rebuild()
+		if err != nil {
+			s.reportReloadError(liveReload, err)
+			return false
 		}
-		return
+		s.m.Lock()
+		s.project = replacement
+		s.m.Unlock()
+		fmt.Printf("done (%.2fs)\n", time.Since(start).Seconds())
+		return true
 	}
-	s.Site = site
+
+	replacement, err := current.Reloaded(change.Paths)
+	if err != nil {
+		s.reportReloadError(liveReload, err)
+		return false
+	}
+	s.m.Lock()
+	s.Site = replacement
+	s.m.Unlock()
 	// Only clear URL if JEKYLL_URL is not set
 	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
-		s.Site.SetAbsoluteURL(jekyllURL)
+		replacement.SetAbsoluteURL(jekyllURL)
 	} else {
-		s.Site.SetAbsoluteURL("")
+		replacement.SetAbsoluteURL("")
 	}
 	fmt.Printf("done (%.2fs)\n", time.Since(start).Seconds())
+	return true
+}
+
+func (s *Server) reportReloadError(liveReload *liveReloadTransport, err error) {
+	fmt.Println()
+	fmt.Fprintln(os.Stderr, err.Error())
+	if liveReload != nil {
+		liveReload.Alert(fmt.Sprintf("Error reading site configuration: %s", err))
+	}
 }

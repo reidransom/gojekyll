@@ -18,17 +18,83 @@ import (
 // one sibling staging tree, and promotes that complete generation only after
 // every locale has succeeded.
 //
-// Callers must use Site.Write for a non-localized site. Keeping that path
-// separate preserves existing single-site lifecycle behavior.
+// Callers that need to serve or watch a localized build should use
+// BuildLocalizedProject to retain its immutable aggregate route snapshot.
 func LocalizedBuild(base *Site) (int, error) {
+	_, count, err := BuildLocalizedProject(base)
+	return count, err
+}
+
+// LocalizedProject is one successfully built localization generation. Its
+// locale sites and aggregate route index are immutable after construction, so
+// callers can replace one project pointer without exposing a mixed generation.
+type LocalizedProject struct {
+	project *localizationProject
+	routes  map[string]localizedRoute
+}
+
+type localizedRoute struct {
+	site     *Site
+	document Document
+}
+
+// BuildLocalizedProject builds and publishes one complete localization
+// generation, returning its aggregate serving snapshot only after promotion
+// succeeds.
+func BuildLocalizedProject(base *Site) (*LocalizedProject, int, error) {
 	if base == nil || !base.cfg.Enabled() {
-		return 0, fmt.Errorf("localized build requires localization configuration")
+		return nil, 0, fmt.Errorf("localized build requires localization configuration")
 	}
 	project, err := newLocalizationProject(base)
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	}
-	return project.Build()
+	count, err := project.Build()
+	if err != nil {
+		return nil, count, err
+	}
+	return &LocalizedProject{project: project, routes: project.routes}, count, nil
+}
+
+// Config returns the shared project configuration.
+func (p *LocalizedProject) Config() *config.Config {
+	return p.project.base.Config()
+}
+
+// WatchFiles observes the project source once. Every emitted event must be
+// rebuilt through Rebuild; localized projects never reload individual files.
+func (p *LocalizedProject) WatchFiles() (<-chan FilesEvent, error) {
+	return p.project.base.WatchFiles()
+}
+
+// Rebuild reads a fresh project and publishes a complete replacement
+// generation. The current project remains usable when the rebuild fails.
+func (p *LocalizedProject) Rebuild() (*LocalizedProject, int, error) {
+	fresh, err := FromDirectory(p.project.base.SourceDir(), p.project.base.flags)
+	if err != nil {
+		return nil, 0, err
+	}
+	fresh.SetAbsoluteURL(p.project.base.cfg.AbsoluteURL)
+	return BuildLocalizedProject(fresh)
+}
+
+// SetAbsoluteURL applies the serving URL to every locale before pages are
+// served. Rebuild carries this value into the next project generation.
+func (p *LocalizedProject) SetAbsoluteURL(url string) {
+	p.project.base.SetAbsoluteURL(url)
+	for _, localeSite := range p.project.prepared {
+		localeSite.SetAbsoluteURL(url)
+	}
+}
+
+// URLPage resolves a request through the aggregate, validated route index and
+// returns the owning locale site needed to render the document.
+func (p *LocalizedProject) URLPage(urlpath string) (*Site, Document, bool) {
+	route, found := p.routes[urlpath]
+	if !found {
+		return nil, nil, false
+	}
+	return route.site, route.document, true
 }
 
 type localizationProject struct {
@@ -37,6 +103,7 @@ type localizationProject struct {
 	data            *localization.DataCatalog
 	locales         []config.Locale
 	prepared        []*Site
+	routes          map[string]localizedRoute
 	aggregateRoutes []aggregateRoute
 }
 
@@ -167,6 +234,11 @@ func (p *localizationProject) Build() (int, error) {
 			}
 		}
 	}
+	routes, err := p.routeIndex()
+	if err != nil {
+		return count, err
+	}
+	p.routes = routes
 	if p.base.cfg.DryRun {
 		return count, nil
 	}
@@ -174,6 +246,27 @@ func (p *localizationProject) Build() (int, error) {
 		return count, err
 	}
 	return count, nil
+}
+
+// routeIndex records every validated route and its owning locale site. It is
+// constructed only after a complete generation has rendered successfully.
+func (p *localizationProject) routeIndex() (map[string]localizedRoute, error) {
+	routes := make(map[string]localizedRoute)
+	for _, localeSite := range p.prepared {
+		for _, document := range localeSite.OutputDocs() {
+			if _, removed := localeSite.removedRoutes[document.URL()]; removed {
+				continue
+			}
+			route := localizedRoute{site: localeSite, document: document}
+			for _, alias := range localizedRouteAliases(document.URL()) {
+				if existing, found := routes[alias]; found && existing.document != document {
+					return nil, fmt.Errorf("localized route index collision at %q", alias)
+				}
+				routes[alias] = route
+			}
+		}
+	}
+	return routes, nil
 }
 
 func (p *localizationProject) bindLocalizationContexts() error {

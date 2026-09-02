@@ -16,27 +16,30 @@ import (
 	"syscall"
 
 	"github.com/pkg/browser"
+	"github.com/reidransom/jigyll/config"
 	"github.com/reidransom/jigyll/site"
 	"github.com/reidransom/liquid"
 )
 
 // Server serves the site on HTTP.
 type Server struct {
-	m           sync.Mutex
+	m           sync.RWMutex
 	Site        *site.Site
+	project     *site.LocalizedProject
 	liveReload  *liveReloadTransport
 	errorOutput io.Writer
 }
 
 // Run starts a server on the address configured for the site.
 func (s *Server) Run(open bool, logger func(label, value string)) error {
-	cfg := s.Site.Config()
-	// Only clear URL if JEKYLL_URL is not set
-	if jekyllURL := os.Getenv("JEKYLL_URL"); jekyllURL != "" {
-		s.Site.SetAbsoluteURL(jekyllURL)
-	} else {
-		s.Site.SetAbsoluteURL("")
+	if s.Site == nil {
+		return errors.New("serve requires a site")
 	}
+	s.setServingURL()
+	if err := s.ensureLocalizedProject(); err != nil {
+		return err
+	}
+	cfg := s.currentConfig()
 	address := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
@@ -69,8 +72,11 @@ func (s *Server) Serve(listener net.Listener) error {
 	if s.Site == nil {
 		return errors.New("serve requires a site")
 	}
+	if err := s.ensureLocalizedProject(); err != nil {
+		return err
+	}
 
-	if s.Site.Config().Watch {
+	if s.currentConfig().Watch {
 		s.startLiveReloader()
 		defer s.stopLiveReloader()
 	}
@@ -78,9 +84,50 @@ func (s *Server) Serve(listener net.Listener) error {
 	return (&http.Server{Handler: s.routes()}).Serve(listener)
 }
 
+func (s *Server) ensureLocalizedProject() error {
+	s.m.RLock()
+	current := s.project
+	base := s.Site
+	s.m.RUnlock()
+	if current != nil || !base.Config().Enabled() {
+		return nil
+	}
+	project, _, err := site.BuildLocalizedProject(base)
+	if err != nil {
+		return err
+	}
+	s.m.Lock()
+	if s.project == nil {
+		s.project = project
+	}
+	s.m.Unlock()
+	return nil
+}
+
+func (s *Server) currentConfig() *config.Config {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if s.project != nil {
+		return s.project.Config()
+	}
+	return s.Site.Config()
+}
+
+func (s *Server) setServingURL() {
+	url := os.Getenv("JEKYLL_URL")
+	s.m.RLock()
+	project := s.project
+	base := s.Site
+	s.m.RUnlock()
+	base.SetAbsoluteURL(url)
+	if project != nil {
+		project.SetAbsoluteURL(url)
+	}
+}
+
 func (s *Server) routes() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		if s.Site.Config().Watch {
+		if s.currentConfig().Watch {
 			switch r.URL.Path {
 			case liveReloadScriptPath:
 				if err := s.currentLiveReloader().ServeScript(rw, r); err != nil {
@@ -96,19 +143,27 @@ func (s *Server) routes() http.Handler {
 	})
 }
 
-func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
-	s.m.Lock()
-	defer s.m.Unlock()
 
-	var (
-		site     = s.Site
-		urlpath  = r.URL.Path
-		p, found = site.URLPage(urlpath)
-		w        = &responseWriter{Writer: rw}
-	)
+func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
+	s.m.RLock()
+	project := s.project
+	base := s.Site
+	s.m.RUnlock()
+
+	requestSite := base
+	urlpath := r.URL.Path
+	p, found := base.URLPage(urlpath)
+	if project != nil {
+		requestSite, p, found = project.URLPage(urlpath)
+	}
+	w := &responseWriter{Writer: rw}
 	if !found {
 		rw.WriteHeader(http.StatusNotFound)
-		p, found = site.Routes["/404.html"]
+		if project != nil {
+			requestSite, p, found = project.URLPage("/404.html")
+		} else {
+			p, found = base.Routes["/404.html"]
+		}
 	}
 	if !found {
 		if _, err := fmt.Fprintf(w, "404 page not found: %s\n", urlpath); err != nil {
@@ -121,10 +176,10 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", mimeType)
 	}
 	var documentWriter io.Writer = w
-	if site.Config().Watch && strings.HasPrefix(mimeType, "text/html;") {
+	if requestSite.Config().Watch && strings.HasPrefix(mimeType, "text/html;") {
 		documentWriter = NewLiveReloadInjector(documentWriter)
 	}
-	renderErr := site.WriteDocument(documentWriter, p)
+	renderErr := requestSite.WriteDocument(documentWriter, p)
 	if renderErr == nil {
 		return
 	}
@@ -140,7 +195,7 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 		"error":   fmt.Sprint(renderErr),
 		"excerpt": excerpt,
 		"path":    path,
-		"watch":   site.Config().Watch,
+		"watch":   requestSite.Config().Watch,
 	})
 	if err != nil {
 		panic(err)
