@@ -91,6 +91,9 @@ func (c *Collection) readPost(path string, rel string, strategy collectionStrate
 		return nil
 	case f.Published() || c.cfg.Unpublished:
 		p := f.(Page) // f.Static() guarantees this
+		if localized, ok := c.site.(interface{ IncludesPage(pages.Page) bool }); ok && !localized.IncludesPage(p) {
+			return nil
+		}
 		c.pages = append(c.pages, p)
 	}
 	return nil

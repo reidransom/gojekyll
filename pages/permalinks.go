@@ -127,7 +127,18 @@ func (p *page) computePermalink() (string, error) {
 	return permalink, nil
 }
 
-func (p *page) setPermalink() (err error) {
-	p.permalink, err = p.computePermalink()
-	return
+func (p *page) setPermalink() error {
+	permalink, err := p.computePermalink()
+	if err != nil {
+		return err
+	}
+	if prefixer, ok := p.site.(interface{ PathPrefix() string }); ok && prefixer.PathPrefix() != "" {
+		trailingSlash := strings.HasSuffix(permalink, "/")
+		permalink = utils.URLPathClean("/" + strings.Trim(prefixer.PathPrefix(), "/") + "/" + strings.TrimPrefix(permalink, "/"))
+		if trailingSlash && !strings.HasSuffix(permalink, "/") {
+			permalink += "/"
+		}
+	}
+	p.permalink = permalink
+	return nil
 }
