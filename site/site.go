@@ -23,7 +23,8 @@ type Site struct {
 	cfg          config.Config
 	data         map[string]interface{} // from _data files
 	flags        config.Flags           // command-line flags, override config files
-	plugins      []string               // initially cfg.Plugins, but plugins can modify this this
+	plugins         []string               // initially cfg.Plugins, but plugins can modify this
+	pluginInstances map[string]plugins.Plugin
 	themeDir     string                 // absolute path to theme directory
 	remoteThemes *remoteThemeResolver
 

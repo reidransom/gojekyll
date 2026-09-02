@@ -46,25 +46,31 @@ type Site interface {
 // Page is in package pages.
 type Page = pages.Page
 
-// Lookup returns a plugin if it has been registered.
-func Lookup(name string) (Plugin, bool) {
-	p, found := directory[name]
-	return p, found
+// Factory constructs a fresh plugin instance for a site.
+type Factory func() Plugin
+
+// Lookup returns the factory for a registered plugin.
+func Lookup(name string) (Factory, bool) {
+	factory, found := directory[name]
+	return factory, found
 }
 
-// Install installs a registered plugin.
-func Install(names []string, site Site) error {
+// Install constructs and initializes the registered plugins.
+func Install(names []string, site Site) (map[string]Plugin, error) {
+	installed := make(map[string]Plugin, len(names))
 	for _, name := range names {
-		if p, found := directory[name]; found {
+		if factory, found := Lookup(name); found {
+			p := factory()
 			if err := p.AfterInitSite(site); err != nil {
-				return err
+				return nil, err
 			}
+			installed[name] = p
 		} else {
 			// stderr so machine-readable stdout (--json) stays clean
 			fmt.Fprintf(os.Stderr, "warning: jigyll does not emulate the %s plugin.\n", name)
 		}
 	}
-	return nil
+	return installed, nil
 }
 
 // Names returns a sorted list of names of registered plugins.
@@ -90,26 +96,26 @@ func (p plugin) PostInitPage(Site, Page) error                     { return nil 
 func (p plugin) PostReadSite(Site) error                           { return nil }
 func (p plugin) PostRender(b []byte) ([]byte, error)               { return b, nil }
 
-var directory = map[string]Plugin{}
+var directory = map[string]Factory{}
 
-// register installs a plugin in the plugin directory.
+// register installs a plugin factory in the plugin directory.
 //
 // This is internal until better baked.
-func register(name string, p Plugin) {
-	directory[name] = p
+func register(name string, factory Factory) {
+	directory[name] = factory
 }
 
 // Add the built-in plugins defined in this file.
 // More extensive plugins are defined and registered in own files.
 func init() {
-	register("jemoji", jemojiPlugin{})
-	register("jekyll-mentions", jekyllMentionsPlugin{})
-	register("jekyll-optional-front-matter", jekyllOptionalFrontMatterPlugin{})
+	register("jemoji", func() Plugin { return jemojiPlugin{} })
+	register("jekyll-mentions", func() Plugin { return jekyllMentionsPlugin{} })
+	register("jekyll-optional-front-matter", func() Plugin { return jekyllOptionalFrontMatterPlugin{} })
 
 	// Jigyll behaves as though the following plugins are always loaded.
 	// Define them here so we don't see warnings that they aren't defined.
-	register("jekyll-live-reload", plugin{})
-	register("jekyll-sass-converter", plugin{})
+	register("jekyll-live-reload", func() Plugin { return plugin{} })
+	register("jekyll-sass-converter", func() Plugin { return plugin{} })
 }
 
 // Some small plugins are below. More involved plugins are in separate files.

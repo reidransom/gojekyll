@@ -303,12 +303,12 @@ func TestDefaultLayout_PostInitPage(t *testing.T) {
 }
 
 func TestDefaultLayout_Integration(t *testing.T) {
-	// Test that the plugin is properly registered
-	plugin, found := Lookup("jekyll-default-layout")
+	// Test that the plugin is properly registered.
+	factory, found := Lookup("jekyll-default-layout")
 	require.True(t, found, "jekyll-default-layout should be registered")
-	require.NotNil(t, plugin, "plugin should not be nil")
+	require.NotNil(t, factory, "plugin factory should not be nil")
 
-	// Test that it implements the Plugin interface correctly
-	_, ok := plugin.(jekyllDefaultLayout)
+	// Test that the factory creates the expected plugin type.
+	_, ok := factory().(jekyllDefaultLayout)
 	require.True(t, ok, "plugin should be of type jekyllDefaultLayout")
 }

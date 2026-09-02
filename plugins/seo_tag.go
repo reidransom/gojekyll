@@ -19,7 +19,7 @@ type jekyllSEOTagPlugin struct {
 }
 
 func init() {
-	register("jekyll-seo-tag", &jekyllSEOTagPlugin{})
+	register("jekyll-seo-tag", func() Plugin { return &jekyllSEOTagPlugin{} })
 }
 
 func (p *jekyllSEOTagPlugin) AfterInitSite(s Site) error {

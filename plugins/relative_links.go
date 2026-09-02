@@ -14,7 +14,7 @@ type jekyllRelativeLinksPlugin struct {
 }
 
 func init() {
-	register("jekyll-relative-links", &jekyllRelativeLinksPlugin{})
+	register("jekyll-relative-links", func() Plugin { return &jekyllRelativeLinksPlugin{} })
 }
 
 func (p *jekyllRelativeLinksPlugin) AfterInitSite(s Site) error {

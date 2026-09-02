@@ -1,7 +1,7 @@
 package plugins
 
 func init() {
-	register("jekyll-default-layout", jekyllDefaultLayout{})
+	register("jekyll-default-layout", func() Plugin { return jekyllDefaultLayout{} })
 }
 
 type jekyllDefaultLayout struct{ plugin }

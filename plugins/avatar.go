@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	register("jekyll-avatar", jekyllAvatarPlugin{})
+	register("jekyll-avatar", func() Plugin { return jekyllAvatarPlugin{} })
 }
 
 type jekyllAvatarPlugin struct{ plugin }

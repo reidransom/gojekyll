@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	register("jekyll-gist", jekyllGistPlugin{})
+	register("jekyll-gist", func() Plugin { return jekyllGistPlugin{} })
 }
 
 type jekyllGistPlugin struct{ plugin }
