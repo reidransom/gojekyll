@@ -215,8 +215,8 @@ func discoverLocaleOverlays(dir string, locales *config.LocalizationConfig, over
 	}
 }
 
-// readLocaleOverlay merges each top-level data-file mapping into one locale
-// overlay. Nested directories remain named data trees.
+// readLocaleOverlay keeps file basenames as locale data-module keys, matching
+// shared-data loading. Nested directories remain named data trees.
 func readLocaleOverlay(dir, display string) (map[string]interface{}, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -250,7 +250,20 @@ func readLocaleOverlay(dir, display string) (map[string]interface{}, error) {
 			problems = append(problems, fmt.Sprintf("locale data file %q must contain a mapping", entryDisplay))
 			continue
 		}
-		overlay = mergeMaps(overlay, values)
+		key := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+		if key == "messages" {
+			if nested, ok := values["messages"].(map[string]interface{}); ok && len(values) == 1 {
+				values = nested
+			}
+		}
+		if existing, exists := overlay[key]; exists {
+			existingMap, existingIsMap := existing.(map[string]interface{})
+			if existingIsMap {
+				overlay[key] = mergeMaps(existingMap, values)
+				continue
+			}
+		}
+		overlay[key] = values
 	}
 	if len(problems) != 0 {
 		sort.Strings(problems)
