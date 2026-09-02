@@ -32,11 +32,24 @@ func LocalizedBuild(base *Site) (int, error) {
 }
 
 type localizationProject struct {
-	base     *Site
-	catalog  *localization.Catalog
-	data     *localization.DataCatalog
-	locales  []config.Locale
-	prepared []*Site
+	base            *Site
+	catalog         *localization.Catalog
+	data            *localization.DataCatalog
+	locales         []config.Locale
+	prepared        []*Site
+	aggregateRoutes []aggregateRoute
+}
+
+// aggregateRoute is the project-level handoff for aggregate generators. An
+// aggregate producer must register every route it will write before project
+// validation, so aggregate output cannot overwrite locale or shared output.
+type aggregateRoute struct {
+	Route  string
+	Source string
+}
+
+func (p *localizationProject) registerAggregateRoute(route, source string) {
+	p.aggregateRoutes = append(p.aggregateRoutes, aggregateRoute{Route: route, Source: source})
 }
 
 func newLocalizationProject(base *Site) (*localizationProject, error) {
@@ -71,14 +84,18 @@ func newLocalizationProject(base *Site) (*localizationProject, error) {
 // collections, routes, renderer, and plugin instances. Static files are read
 // only by the first locale site and therefore retain project-root URLs.
 func (p *localizationProject) Build() (int, error) {
-	stage, err := os.MkdirTemp(filepath.Dir(p.base.DestDir()), ".jigyll-localized-")
-	if err != nil {
-		return 0, err
-	}
-	defer os.RemoveAll(stage)
+	stage := ""
+	if !p.base.cfg.DryRun {
+		var err error
+		stage, err = os.MkdirTemp(filepath.Dir(p.base.DestDir()), ".jigyll-localized-")
+		if err != nil {
+			return 0, err
+		}
+		defer os.RemoveAll(stage)
 
-	if err := copyKeepFiles(p.base.DestDir(), stage, p.base.cfg.KeepFiles); err != nil {
-		return 0, err
+		if err := copyKeepFiles(p.base.DestDir(), stage, p.base.cfg.KeepFiles); err != nil {
+			return 0, err
+		}
 	}
 	inputs := make(map[string]map[string]struct{}, len(p.locales))
 	for _, input := range p.catalog.PreparedInputs() {
@@ -101,7 +118,9 @@ func (p *localizationProject) Build() (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		derived.Destination = stage
+		if stage != "" {
+			derived.Destination = stage
+		}
 		site := New(p.base.flags)
 		site.cfg = derived
 		site.localeKey = locale.Key
@@ -123,7 +142,7 @@ func (p *localizationProject) Build() (int, error) {
 		}
 		p.prepared = append(p.prepared, site)
 	}
-	if err := validateLocalizedRoutes(p.prepared); err != nil {
+	if err := p.validateRoutes(); err != nil {
 		return 0, err
 	}
 	if err := p.bindLocalizationContexts(); err != nil {
@@ -290,25 +309,171 @@ func discoverLocalizedDocuments(site *Site) ([]localization.Document, error) {
 	return documents, nil
 }
 
-func validateLocalizedRoutes(sites []*Site) error {
-	routes := make(map[string]string)
-	destinations := make(map[string]string)
-	for _, site := range sites {
-		for _, document := range site.OutputDocs() {
-			route := document.URL()
-			owner := fmt.Sprintf("locale %q source %q", site.localeKey, document.Source())
-			if previous, exists := routes[route]; exists {
-				return fmt.Errorf("localized route collision at %q between %s and %s", route, previous, owner)
-			}
-			routes[route] = owner
-			destination := filepath.Clean(destinationRelativePath(document))
-			if previous, exists := destinations[destination]; exists {
-				return fmt.Errorf("localized destination collision at %q between %s and %s", destination, previous, owner)
-			}
-			destinations[destination] = owner
+type routeOwner struct {
+	locale         string
+	namespace      string
+	translationKey string
+	source         string
+}
+
+func (o routeOwner) String() string {
+	source := o.source
+	if source == "" {
+		source = "<generated>"
+	}
+	if o.translationKey == "" {
+		return fmt.Sprintf("locale %q namespace %q source %q", o.locale, o.namespace, source)
+	}
+	return fmt.Sprintf("locale %q namespace %q translation key %q source %q", o.locale, o.namespace, o.translationKey, source)
+}
+
+type routeCandidate struct {
+	id          int
+	route       string
+	destination string
+	owner       routeOwner
+}
+
+// validateRoutes validates all registered output candidates rather than the
+// route map. The map intentionally remains the serving lookup, but it cannot
+// retain a document that a later registration would overwrite.
+func (p *localizationProject) validateRoutes() error {
+	editions := make(map[string]localization.Edition)
+	for _, input := range p.catalog.PreparedInputs() {
+		for _, edition := range input.Documents {
+			editions[edition.Source] = edition
 		}
 	}
-	return nil
+
+	var candidates []routeCandidate
+	nextID := 0
+	addDocument := func(site *Site, document Document) {
+		if _, removed := site.removedRoutes[document.URL()]; removed {
+			return
+		}
+		edition, found := editions[document.Source()]
+		namespace := "generated"
+		translationKey := ""
+		if document.IsStatic() {
+			namespace = "static"
+		}
+		if found {
+			namespace = edition.Namespace
+			translationKey = edition.TranslationKey
+		}
+		candidates = append(candidates, routeCandidate{
+			id:          nextID,
+			route:       document.URL(),
+			destination: localizedDestinationPath(document),
+			owner: routeOwner{
+				locale:         site.localeKey,
+				namespace:      namespace,
+				translationKey: translationKey,
+				source:         document.Source(),
+			},
+		})
+		nextID++
+	}
+	for _, site := range p.prepared {
+		for _, document := range site.outputCandidates {
+			addDocument(site, document)
+		}
+	}
+	for _, aggregate := range p.aggregateRoutes {
+		candidates = append(candidates, routeCandidate{
+			id:          nextID,
+			route:       aggregate.Route,
+			destination: localizedRouteDestination(aggregate.Route),
+			owner:       routeOwner{locale: "project", namespace: "aggregate", source: aggregate.Source},
+		})
+		nextID++
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		left, right := candidates[i], candidates[j]
+		if left.route != right.route {
+			return left.route < right.route
+		}
+		if left.owner.locale != right.owner.locale {
+			return left.owner.locale < right.owner.locale
+		}
+		if left.owner.namespace != right.owner.namespace {
+			return left.owner.namespace < right.owner.namespace
+		}
+		if left.owner.translationKey != right.owner.translationKey {
+			return left.owner.translationKey < right.owner.translationKey
+		}
+		return left.owner.source < right.owner.source
+	})
+
+	var problems []string
+	publicRoutes := make(map[string]routeCandidate)
+	for _, candidate := range candidates {
+		for _, route := range localizedRouteAliases(candidate.route) {
+			if previous, exists := publicRoutes[route]; exists && previous.id != candidate.id {
+				problems = append(problems, fmt.Sprintf("route collision at %q between %s and %s", route, previous.owner, candidate.owner))
+				continue
+			}
+			publicRoutes[route] = candidate
+		}
+	}
+	destinations := make(map[string]routeCandidate)
+	for _, candidate := range candidates {
+		if previous, exists := destinations[candidate.destination]; exists && previous.id != candidate.id {
+			problems = append(problems, fmt.Sprintf("destination collision at %q between %s and %s", candidate.destination, previous.owner, candidate.owner))
+			continue
+		}
+		destinations[candidate.destination] = candidate
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	sort.Strings(problems)
+	return fmt.Errorf("invalid localized routes:\n - %s", strings.Join(problems, "\n - "))
+}
+
+func localizedDestinationPath(document Document) string {
+	if document.IsStatic() {
+		return localizedRouteDestination(document.URL())
+	}
+	return localizedRouteDestination(destinationRelativePath(document))
+}
+
+func localizedRouteDestination(route string) string {
+	destination := filepath.Clean(strings.TrimPrefix(route, "/"))
+	if filepath.Ext(destination) == "" && !strings.HasSuffix(route, "/") {
+		destination = filepath.Join(destination, "index.html")
+	}
+	if strings.HasSuffix(route, "/") && filepath.Ext(destination) == "" {
+		destination = filepath.Join(destination, "index.html")
+	}
+	return filepath.ToSlash(destination)
+}
+
+func localizedRouteAliases(route string) []string {
+	aliases := map[string]struct{}{route: {}}
+	switch {
+	case strings.HasSuffix(route, "/"):
+		aliases[route+"index.html"] = struct{}{}
+		aliases[route+"index.htm"] = struct{}{}
+	case strings.HasSuffix(route, "index.html"):
+		prefix := strings.TrimSuffix(route, "index.html")
+		aliases[prefix] = struct{}{}
+		aliases[strings.TrimSuffix(prefix, "/")] = struct{}{}
+	case strings.HasSuffix(route, "index.htm"):
+		prefix := strings.TrimSuffix(route, "index.htm")
+		aliases[prefix] = struct{}{}
+		aliases[strings.TrimSuffix(prefix, "/")] = struct{}{}
+	}
+	if strings.HasSuffix(route, ".html") {
+		aliases[strings.TrimSuffix(route, ".html")] = struct{}{}
+	}
+	out := make([]string, 0, len(aliases))
+	for alias := range aliases {
+		out = append(out, alias)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func copyKeepFiles(source, destination string, keepFiles []string) error {
@@ -357,25 +522,41 @@ func copyLocalizedPath(source, destination string, info os.FileInfo) error {
 func promoteLocalizedGeneration(stage, destination string) error {
 	backup := destination + ".jigyll-localized-backup"
 	if err := os.RemoveAll(backup); err != nil {
-		return err
+		return fmt.Errorf("clearing localized promotion backup: %w", err)
 	}
+
 	destinationExists := false
 	if _, err := os.Stat(destination); err == nil {
 		destinationExists = true
 		if err := os.Rename(destination, backup); err != nil {
-			return err
+			return fmt.Errorf("backing up current destination: %w", err)
 		}
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	if err := os.Rename(stage, destination); err != nil {
-		if destinationExists {
-			_ = os.Rename(backup, destination)
+
+	restore := func() error {
+		if !destinationExists {
+			return nil
 		}
-		return err
+		if err := os.RemoveAll(destination); err != nil {
+			return err
+		}
+		return os.Rename(backup, destination)
+	}
+	if err := os.Rename(stage, destination); err != nil {
+		if restoreErr := restore(); restoreErr != nil {
+			return fmt.Errorf("promoting localized generation: %w; restoring previous destination: %v", err, restoreErr)
+		}
+		return fmt.Errorf("promoting localized generation: %w", err)
 	}
 	if destinationExists {
-		return os.RemoveAll(backup)
+		if err := os.RemoveAll(backup); err != nil {
+			if restoreErr := restore(); restoreErr != nil {
+				return fmt.Errorf("removing localized promotion backup: %w; restoring previous destination: %v", err, restoreErr)
+			}
+			return fmt.Errorf("removing localized promotion backup: %w", err)
+		}
 	}
 	return nil
 }

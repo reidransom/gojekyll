@@ -3,6 +3,7 @@ package site
 import (
 	"bytes"
 	"io"
+	"strings"
 
 	"github.com/reidransom/jigyll/pages"
 	"github.com/reidransom/jigyll/plugins"
@@ -15,6 +16,10 @@ import (
 // RemoveRoute is in the plugins.Site interface.
 func (s *Site) RemoveRoute(url string) {
 	delete(s.Routes, url)
+	if s.removedRoutes == nil {
+		s.removedRoutes = make(map[string]struct{})
+	}
+	s.removedRoutes[url] = struct{}{}
 }
 
 // HasRoute is in the plugins.Site interface.
@@ -32,6 +37,13 @@ func (s *Site) AddPage(p Page) {
 
 // AddHTMLPage is in the plugins.Site interface.
 func (s *Site) AddHTMLPage(url string, src string, fm pages.FrontMatter) {
+	if s.localePrefix != "" && !strings.HasPrefix(url, "/"+s.localePrefix+"/") && url != "/"+s.localePrefix {
+		trailingSlash := strings.HasSuffix(url, "/")
+		url = utils.URLPathClean("/" + s.localePrefix + "/" + strings.TrimPrefix(url, "/"))
+		if trailingSlash && !strings.HasSuffix(url, "/") {
+			url += "/"
+		}
+	}
 	tpl, err := s.TemplateEngine().ParseTemplate([]byte(src))
 	if err != nil {
 		panic(err)

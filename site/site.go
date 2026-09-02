@@ -3,6 +3,7 @@ package site
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -28,7 +29,8 @@ type Site struct {
 	themeDir     string                 // absolute path to theme directory
 	remoteThemes *remoteThemeResolver
 
-	docs               []Document // all documents, whether or not they are output
+	outputCandidates []Document // all registered output documents, before collision resolution
+	removedRoutes    map[string]struct{}
 	nonCollectionPages []Page
 
 	renderer   *renderers.Manager
@@ -91,11 +93,16 @@ func (s *Site) DestDir() string {
 	return filepath.Join(s.cfg.Source, s.cfg.Destination)
 }
 
-// OutputDocs returns a list of output pages.
+// OutputDocs returns output pages in route order.
 func (s *Site) OutputDocs() []Document {
-	out := make([]Document, 0, len(s.Routes))
-	for _, p := range s.Routes {
-		out = append(out, p)
+	routes := make([]string, 0, len(s.Routes))
+	for route := range s.Routes {
+		routes = append(routes, route)
+	}
+	sort.Strings(routes)
+	out := make([]Document, 0, len(routes))
+	for _, route := range routes {
+		out = append(out, s.Routes[route])
 	}
 	return out
 }

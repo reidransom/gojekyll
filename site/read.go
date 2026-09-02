@@ -187,6 +187,10 @@ func (s *Site) registerDocument(d Document, output bool) bool {
 	if d.Published() || s.cfg.Unpublished {
 		s.docs = append(s.docs, d)
 		if output {
+			s.outputCandidates = append(s.outputCandidates, d)
+			if s.removedRoutes != nil {
+				delete(s.removedRoutes, d.URL())
+			}
 			s.Routes[d.URL()] = d
 		}
 		return true
