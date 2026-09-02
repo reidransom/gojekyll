@@ -2,15 +2,20 @@ package site
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/reidransom/jigyll/config"
 	"github.com/reidransom/jigyll/localization"
 	"github.com/reidransom/jigyll/pages"
+	"github.com/reidransom/jigyll/plugins"
 	"github.com/reidransom/jigyll/utils"
+	"github.com/reidransom/liquid"
 )
 
 // LocalizedBuild enters the project-level production seam for an opt-in
@@ -98,13 +103,14 @@ func (p *LocalizedProject) URLPage(urlpath string) (*Site, Document, bool) {
 }
 
 type localizationProject struct {
-	base            *Site
-	catalog         *localization.Catalog
-	data            *localization.DataCatalog
-	locales         []config.Locale
-	prepared        []*Site
-	routes          map[string]localizedRoute
-	aggregateRoutes []aggregateRoute
+	base               *Site
+	catalog            *localization.Catalog
+	data               *localization.DataCatalog
+	locales            []config.Locale
+	prepared           []*Site
+	routes             map[string]localizedRoute
+	aggregateRoutes    []aggregateRoute
+	aggregateDocuments []aggregateDocument
 }
 
 // aggregateRoute is the project-level handoff for aggregate generators. An
@@ -117,6 +123,182 @@ type aggregateRoute struct {
 
 func (p *localizationProject) registerAggregateRoute(route, source string) {
 	p.aggregateRoutes = append(p.aggregateRoutes, aggregateRoute{Route: route, Source: source})
+}
+
+// aggregateDocument is one project-level document and the prepared locale site
+// that supplies its output destination and rendering hooks.
+type aggregateDocument struct {
+	site     *Site
+	document Document
+}
+
+type localizedSitemapDocument struct {
+	pages.PageEmbed
+	content string
+}
+
+func (d *localizedSitemapDocument) Write(w io.Writer) error {
+	_, err := io.WriteString(w, d.content)
+	return err
+}
+
+func (p *localizationProject) prepareAggregateDocuments() error {
+	if !p.sitemapConfigured() {
+		return nil
+	}
+
+	sitemap := &localizedSitemapDocument{
+		PageEmbed: pages.PageEmbed{Path: "/sitemap.xml"},
+		content:   plugins.RenderLocalizedSitemap(p.localizedSitemapEntries()),
+	}
+	p.aggregateDocuments = append(p.aggregateDocuments, aggregateDocument{
+		site:     p.prepared[0],
+		document: sitemap,
+	})
+	p.registerAggregateRoute(sitemap.URL(), "jekyll-sitemap")
+
+	if !p.hasRootRoute("/robots.txt") {
+		robots := &localizedSitemapDocument{
+			PageEmbed: pages.PageEmbed{Path: "/robots.txt"},
+			content:   "Sitemap: " + utils.URLJoin(p.base.cfg.AbsoluteURL, p.base.cfg.BaseURL, "/sitemap.xml"),
+		}
+		p.aggregateDocuments = append(p.aggregateDocuments, aggregateDocument{
+			site:     p.prepared[0],
+			document: robots,
+		})
+		p.registerAggregateRoute(robots.URL(), "jekyll-sitemap")
+	}
+	return nil
+}
+
+func (p *localizationProject) sitemapConfigured() bool {
+	for _, site := range p.prepared {
+		if _, found := site.pluginInstances["jekyll-sitemap"]; found {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *localizationProject) hasRootRoute(route string) bool {
+	for _, site := range p.prepared {
+		if site.HasRoute(route) {
+			return true
+		}
+	}
+	return false
+}
+
+type localizedSitemapEntry struct {
+	site     *Site
+	page     pages.Page
+	entry    plugins.SitemapEntry
+	identity localization.Identity
+}
+
+func (p *localizationProject) localizedSitemapEntries() []plugins.SitemapEntry {
+	editions := make(map[string]localization.Edition)
+	for _, input := range p.catalog.PreparedInputs() {
+		for _, edition := range input.Documents {
+			editions[edition.Source] = edition
+		}
+	}
+
+	entries := make([]localizedSitemapEntry, 0)
+	for _, site := range p.prepared {
+		for _, document := range site.OutputDocs() {
+			if !sitemapEligible(site, document) {
+				continue
+			}
+			entry := localizedSitemapEntry{
+				site: site,
+				entry: plugins.SitemapEntry{
+					URL:          sitemapAbsoluteURL(site, document.URL()),
+					LastModified: sitemapLastModified(document),
+				},
+			}
+			if page, ok := document.(pages.Page); ok {
+				entry.page = page
+				if edition, found := editions[page.Source()]; found && edition.TranslationKey != "" {
+					entry.identity = localization.Identity{Namespace: edition.Namespace, TranslationKey: edition.TranslationKey}
+				}
+			}
+			entries = append(entries, entry)
+		}
+	}
+
+	groups := make(map[localization.Identity][]int)
+	for index, entry := range entries {
+		if entry.page != nil && entry.identity.TranslationKey != "" {
+			groups[entry.identity] = append(groups[entry.identity], index)
+		}
+	}
+	for _, group := range groups {
+		alternates := make([]plugins.SitemapAlternate, 0, len(group))
+		for _, index := range group {
+			entry := entries[index]
+			alternates = append(alternates, plugins.SitemapAlternate{
+				Language: entry.site.localizationContext.locale.Tag,
+				URL:      entry.entry.URL,
+				XDefault: entry.site.localeKey == p.base.cfg.Localization.DefaultLanguage,
+			})
+		}
+		for _, index := range group {
+			entries[index].entry.Alternates = append([]plugins.SitemapAlternate(nil), alternates...)
+		}
+	}
+
+	result := make([]plugins.SitemapEntry, len(entries))
+	for index, entry := range entries {
+		result[index] = entry.entry
+	}
+	return result
+}
+
+func sitemapEligible(site *Site, document Document) bool {
+	if document.IsStatic() {
+		if path.Base(document.URL()) == "404.html" || site.cfg.IsConfigPath(strings.TrimPrefix(document.URL(), "/")) {
+			return false
+		}
+		drop, ok := liquid.FromDrop(document).(liquid.IterationKeyedMap)
+		return !ok || drop["sitemap"] != false
+	}
+
+	page, ok := document.(pages.Page)
+	if !ok || !page.FrontMatter().Bool("sitemap", true) {
+		return false
+	}
+	if page.FrontMatter().String("collection", "") != "" {
+		return true
+	}
+	return page.OutputExt() == ".html" && page.URL() != "/404.html"
+}
+
+func sitemapAbsoluteURL(site *Site, route string) string {
+	return utils.URLJoin(site.cfg.AbsoluteURL, site.cfg.BaseURL, strings.ReplaceAll(route, "/index.html", "/"))
+}
+
+func sitemapLastModified(document Document) string {
+	if document.IsStatic() {
+		if drop, ok := liquid.FromDrop(document).(liquid.IterationKeyedMap); ok {
+			if modified, ok := drop["modified_time"].(time.Time); ok {
+				return modified.Format("2006-01-02T15:04:05-07:00")
+			}
+		}
+		return ""
+	}
+
+	page, ok := document.(pages.Page)
+	if !ok {
+		return ""
+	}
+	if modified, ok := page.FrontMatter()["last_modified_at"].(time.Time); ok {
+		return modified.Format("2006-01-02T15:04:05-07:00")
+	}
+	if page.IsPost() {
+		return page.PostDate().Format("2006-01-02T15:04:05-07:00")
+	}
+	return ""
 }
 
 func newLocalizationProject(base *Site) (*localizationProject, error) {
@@ -209,6 +391,9 @@ func (p *localizationProject) Build() (int, error) {
 		}
 		p.prepared = append(p.prepared, site)
 	}
+	if err := p.prepareAggregateDocuments(); err != nil {
+		return 0, err
+	}
 	if err := p.validateRoutes(); err != nil {
 		return 0, err
 	}
@@ -234,6 +419,18 @@ func (p *localizationProject) Build() (int, error) {
 			}
 		}
 	}
+	for _, aggregate := range p.aggregateDocuments {
+		count++
+		if p.base.cfg.DryRun {
+			if err := aggregate.document.Write(io.Discard); err != nil {
+				return count, fmt.Errorf("rendering aggregate %q: %w", aggregate.document.URL(), err)
+			}
+			continue
+		}
+		if err := aggregate.site.WriteDoc(aggregate.document); err != nil {
+			return count, fmt.Errorf("writing aggregate %q: %w", aggregate.document.URL(), err)
+		}
+	}
 	routes, err := p.routeIndex()
 	if err != nil {
 		return count, err
@@ -248,7 +445,7 @@ func (p *localizationProject) Build() (int, error) {
 	return count, nil
 }
 
-// routeIndex records every validated route and its owning locale site. It is
+// routeIndex records every validated route and its owning site. It is
 // constructed only after a complete generation has rendered successfully.
 func (p *localizationProject) routeIndex() (map[string]localizedRoute, error) {
 	routes := make(map[string]localizedRoute)
@@ -264,6 +461,15 @@ func (p *localizationProject) routeIndex() (map[string]localizedRoute, error) {
 				}
 				routes[alias] = route
 			}
+		}
+	}
+	for _, aggregate := range p.aggregateDocuments {
+		route := localizedRoute{site: aggregate.site, document: aggregate.document}
+		for _, alias := range localizedRouteAliases(aggregate.document.URL()) {
+			if existing, found := routes[alias]; found && existing.document != aggregate.document {
+				return nil, fmt.Errorf("localized route index collision at %q", alias)
+			}
+			routes[alias] = route
 		}
 	}
 	return routes, nil
