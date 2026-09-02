@@ -3,7 +3,7 @@ package plugins
 type sitemapPlugin struct{ plugin }
 
 func init() {
-	register("jekyll-sitemap", &sitemapPlugin{})
+	register("jekyll-sitemap", func() Plugin { return &sitemapPlugin{} })
 }
 
 func (p *sitemapPlugin) PostReadSite(s Site) error {

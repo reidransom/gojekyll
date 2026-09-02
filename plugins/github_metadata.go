@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	register("jekyll-github-metadata", jekyllGithubMetadataPlugin{})
+	register("jekyll-github-metadata", func() Plugin { return jekyllGithubMetadataPlugin{} })
 }
 
 // jekyllGithubMetadataPlugin emulates the jekyll-github-metadata plugin.

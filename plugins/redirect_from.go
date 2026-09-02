@@ -10,7 +10,7 @@ type jekyllRedirectFromPlugin struct{ plugin }
 var redirectTemplate *template.Template
 
 func init() {
-	register("jekyll-redirect-from", jekyllRedirectFromPlugin{})
+	register("jekyll-redirect-from", func() Plugin { return jekyllRedirectFromPlugin{} })
 	tmpl, err := template.New("redirect_from").Parse(redirectFromTemplateSource)
 	if err != nil {
 		panic(err)

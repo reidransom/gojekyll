@@ -9,7 +9,7 @@ import (
 type jekyllReadmeIndexPlugin struct{ plugin }
 
 func init() {
-	register("jekyll-readme-index", jekyllReadmeIndexPlugin{})
+	register("jekyll-readme-index", func() Plugin { return jekyllReadmeIndexPlugin{} })
 }
 
 func (p jekyllReadmeIndexPlugin) PostInitPage(s Site, page Page) error {

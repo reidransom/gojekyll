@@ -3,7 +3,7 @@ package plugins
 import "github.com/reidransom/jigyll/utils"
 
 func init() {
-	register("github-pages", githubPagesPlugin{})
+	register("github-pages", func() Plugin { return githubPagesPlugin{} })
 }
 
 type githubPagesPlugin struct{ plugin }

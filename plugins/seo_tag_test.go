@@ -206,9 +206,10 @@ func renderSEOTag(t *testing.T, cfg config.Config, site, page tags.IterationKeye
 
 	engine := liquid.NewEngine()
 	filters.AddJekyllFilters(engine, &cfg)
-	plugins := []string{"jekyll-seo-tag"}
-	require.NoError(t, Install(plugins, siteFake{cfg, engine}))
-	require.NoError(t, directory[plugins[0]].ConfigureTemplateEngine(engine))
+	names := []string{"jekyll-seo-tag"}
+	installed, err := Install(names, siteFake{cfg, engine})
+	require.NoError(t, err)
+	require.NoError(t, installed[names[0]].ConfigureTemplateEngine(engine))
 	rendered, err := engine.ParseAndRenderString(`{% seo %}`, liquid.Bindings{
 		"jekyll": map[string]string{"version": "develop (jigyll)"},
 		"page":   page,

@@ -31,9 +31,10 @@ func (s siteFake) ToLiquid() interface{} {
 
 func TestAvatarTag(t *testing.T) {
 	engine := liquid.NewEngine()
-	plugins := []string{"jekyll-avatar"}
-	_ = Install(plugins, siteFake{config.Default(), engine})
-	require.NoError(t, directory[plugins[0]].ConfigureTemplateEngine(engine))
+	names := []string{"jekyll-avatar"}
+	installed, err := Install(names, siteFake{config.Default(), engine})
+	require.NoError(t, err)
+	require.NoError(t, installed[names[0]].ConfigureTemplateEngine(engine))
 	bindings := liquid.Bindings{"user": "osteele"}
 
 	s, err := engine.ParseAndRenderString(`{% avatar osteele %}`, bindings)

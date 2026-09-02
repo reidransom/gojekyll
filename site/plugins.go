@@ -42,18 +42,22 @@ func (s *Site) AddHTMLPage(url string, src string, fm pages.FrontMatter) {
 
 func (s *Site) installPlugins() error {
 	s.plugins = s.cfg.Plugins
+	s.pluginInstances = make(map[string]plugins.Plugin)
 	installed := utils.StringSet{}
 	// Install plugins and call their ModifyPluginList methods.
 	// Repeat until no plugins have been added.
 	for len(s.plugins) > len(installed) {
 		// Collect plugins into a list instead of map, in order to preserve order
 		pending := utils.StringList(s.plugins).Reject(installed.Contains)
-		if err := plugins.Install(pending, s); err != nil {
+		instances, err := plugins.Install(pending, s)
+		if err != nil {
 			return err
 		}
+		for name, p := range instances {
+			s.pluginInstances[name] = p
+		}
 		for _, name := range pending {
-			p, ok := plugins.Lookup(name)
-			if ok {
+			if p, ok := s.pluginInstances[name]; ok {
 				s.plugins = p.ModifyPluginList(s.plugins)
 			}
 		}
@@ -64,8 +68,7 @@ func (s *Site) installPlugins() error {
 
 func (s *Site) runHooks(h func(plugins.Plugin) error) error {
 	for _, name := range s.plugins {
-		p, ok := plugins.Lookup(name)
-		if ok {
+		if p, ok := s.pluginInstances[name]; ok {
 			if err := h(p); err != nil {
 				return utils.WrapError(err, "running plugin")
 			}

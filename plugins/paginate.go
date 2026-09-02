@@ -15,7 +15,7 @@ import (
 type paginatePlugin struct{ plugin }
 
 func init() {
-	register("jekyll-paginate", &paginatePlugin{})
+	register("jekyll-paginate", func() Plugin { return &paginatePlugin{} })
 }
 
 // paginatedPage is the part of the concrete page implementation that

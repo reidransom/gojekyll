@@ -7,8 +7,9 @@ import (
 )
 
 func TestIncludeCachePluginRegistration(t *testing.T) {
-	registered, ok := Lookup("jekyll-include-cache")
+	factory, ok := Lookup("jekyll-include-cache")
 	require.True(t, ok)
+	registered := factory()
 	require.IsType(t, plugin{}, registered)
 	require.Empty(t, registered.ModifyPluginList(nil))
 }

@@ -15,7 +15,7 @@ type jekyllFeedPlugin struct {
 }
 
 func init() {
-	register("jekyll-feed", &jekyllFeedPlugin{})
+	register("jekyll-feed", func() Plugin { return &jekyllFeedPlugin{} })
 }
 
 func (p *jekyllFeedPlugin) AfterInitSite(s Site) error {

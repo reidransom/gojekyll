@@ -11,10 +11,10 @@ import (
 
 func TestGistTag(t *testing.T) {
 	engine := liquid.NewEngine()
-	plugins := []string{"jekyll-gist"}
-	_ = Install(plugins, siteFake{config.Default(), engine})
-	require.NoError(t, directory[plugins[0]].ConfigureTemplateEngine(engine))
-
+	names := []string{"jekyll-gist"}
+	installed, err := Install(names, siteFake{config.Default(), engine})
+	require.NoError(t, err)
+	require.NoError(t, installed[names[0]].ConfigureTemplateEngine(engine))
 	s, err := engine.ParseAndRenderString(`{% gist parkr/931c1c8d465a04042403 %}`, liquid.Bindings{})
 	require.NoError(t, err)
 	re := regexp.MustCompile(`<script.*>\s*</script>`)
@@ -24,10 +24,10 @@ func TestGistTag(t *testing.T) {
 
 func TestGistTagWithFilename(t *testing.T) {
 	engine := liquid.NewEngine()
-	plugins := []string{"jekyll-gist"}
-	_ = Install(plugins, siteFake{config.Default(), engine})
-	require.NoError(t, directory[plugins[0]].ConfigureTemplateEngine(engine))
-
+	names := []string{"jekyll-gist"}
+	installed, err := Install(names, siteFake{config.Default(), engine})
+	require.NoError(t, err)
+	require.NoError(t, installed[names[0]].ConfigureTemplateEngine(engine))
 	s, err := engine.ParseAndRenderString(`{% gist parkr/931c1c8d465a04042403 test.rb %}`, liquid.Bindings{})
 	require.NoError(t, err)
 	require.Contains(t, s, `src="https://gist.github.com/parkr/931c1c8d465a04042403.js?file=test.rb"`)
@@ -37,11 +37,11 @@ func TestGistTagNoscriptDisabled(t *testing.T) {
 	cfg := config.Default()
 	cfg.Set("gist", map[string]interface{}{"noscript": false})
 	engine := liquid.NewEngine()
-	plugins := []string{"jekyll-gist"}
+	names := []string{"jekyll-gist"}
 	site := siteFake{cfg, engine}
-	_ = Install(plugins, site)
-	require.NoError(t, directory[plugins[0]].ConfigureTemplateEngine(engine))
-
+	installed, err := Install(names, site)
+	require.NoError(t, err)
+	require.NoError(t, installed[names[0]].ConfigureTemplateEngine(engine))
 	// Create bindings with site config
 	bindings := liquid.Bindings{"site": site.ToLiquid()}
 	s, err := engine.ParseAndRenderString(`{% gist parkr/931c1c8d465a04042403 %}`, bindings)
@@ -54,11 +54,11 @@ func TestGistTagNoscriptEnabled(t *testing.T) {
 	cfg := config.Default()
 	cfg.Set("gist", map[string]interface{}{"noscript": true})
 	engine := liquid.NewEngine()
-	plugins := []string{"jekyll-gist"}
+	names := []string{"jekyll-gist"}
 	site := siteFake{cfg, engine}
-	_ = Install(plugins, site)
-	require.NoError(t, directory[plugins[0]].ConfigureTemplateEngine(engine))
-
+	installed, err := Install(names, site)
+	require.NoError(t, err)
+	require.NoError(t, installed[names[0]].ConfigureTemplateEngine(engine))
 	// Create bindings with site config
 	bindings := liquid.Bindings{"site": site.ToLiquid()}
 	s, err := engine.ParseAndRenderString(`{% gist parkr/931c1c8d465a04042403 %}`, bindings)
