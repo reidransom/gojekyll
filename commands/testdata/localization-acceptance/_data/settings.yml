@@ -1,0 +1,5 @@
+shared: common
+locale: shared
+nested:
+  shared: common
+  locale: shared

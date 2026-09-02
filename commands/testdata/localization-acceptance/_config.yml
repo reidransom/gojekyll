@@ -1,0 +1,25 @@
+url: https://example.test
+baseurl: /handbook
+title: Localization acceptance
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+collections:
+  guides:
+    output: true
+localization:
+  default_language: en
+  default_language_in_subdir: false
+  locales:
+    en:
+      tag: en
+      label: English
+      weight: 1
+    de:
+      tag: de
+      label: Deutsch
+      weight: 1
+      fallbacks: [fr]
+    fr:
+      tag: fr
+      label: Français

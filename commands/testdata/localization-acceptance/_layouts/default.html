@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="{{ page.language.tag }}" dir="{{ page.language.direction }}">
+<body>
+site-language={{ site.language.key }}
+languages={% for language in site.languages %}{{ language.key }}{% unless forloop.last %},{% endunless %}{% endfor %}
+default-language={{ site.default_language.key }}
+page-language={{ page.language.key }}
+translation-key={{ page.translation_key }}
+translations={% for translation in page.translations %}{{ translation.language.key }}={{ translation.url }}{% unless forloop.last %},{% endunless %}{% endfor %}
+all-translations={% for translation in page.all_translations %}{{ translation.language.key }}={{ translation.url }}{% unless forloop.last %},{% endunless %}{% endfor %}
+alternates={% for alternate in page.alternates %}{{ alternate.tag }}={{ alternate.url }}{% if alternate.x_default %}=x-default{% endif %}{% unless forloop.last %},{% endunless %}{% endfor %}
+shared={{ site.data.settings.shared }}
+locale-value={{ site.data.settings.locale }}
+nested={{ site.data.settings.nested.shared }}/{{ site.data.settings.nested.locale }}
+message={{ "nav.home" | translate }}
+{% if page.translation_key == "about" %}
+page-lookup={{ page | localized_url: "de" }}
+route-lookup={{ "/about/" | localized_url: "de" }}
+route-query-fragment={{ "/about/?source=fixture#section" | localized_url: "de" }}
+shared-asset={{ "/assets/site.css" | localized_url: "de" }}
+external={{ "https://cdn.example.test/app.js" | localized_url: "de" }}
+fragment={{ "#section" | localized_url: "de" }}
+relative={{ "/about/" | relative_url }}
+absolute={{ "/about/" | absolute_url }}
+{% endif %}
+posts={% for post in site.posts %}{{ post.title }}{% unless forloop.last %},{% endunless %}{% endfor %}
+guides={% for guide in site.guides %}{{ guide.title }}{% unless forloop.last %},{% endunless %}{% endfor %}
+{{ content }}
+</body>
+</html>
