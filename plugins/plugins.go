@@ -40,6 +40,7 @@ type Site interface {
 	Posts() []Page
 	HasLayout(string) bool
 	HasRoute(string) bool
+	LocalizedURL(string) string
 	FilenameURLPath(string) (string, bool)
 }
 

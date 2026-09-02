@@ -39,7 +39,7 @@ func (p *paginatePlugin) PostReadSite(s Site) error {
 	if !strings.Contains(paginatePath, ":num") {
 		return fmt.Errorf("paginate_path %q must contain :num", paginatePath)
 	}
-	tmpl := findTemplatePage(s, indexURLFromPaginatePath(paginatePath))
+	tmpl := findTemplatePage(s, s.LocalizedURL(indexURLFromPaginatePath(paginatePath)))
 	if tmpl == nil {
 		fmt.Println("Pagination: Pagination is enabled, but I couldn't find an" +
 			" index.html page to use as the pagination template. Skipping pagination.")
@@ -56,7 +56,7 @@ func (p *paginatePlugin) PostReadSite(s Site) error {
 			// Page 1 is the index page itself; no page1 URL is generated.
 			return tmpl.URL()
 		}
-		url := utils.URLPathClean("/" + strings.ReplaceAll(paginatePath, ":num", fmt.Sprint(n)))
+		url := s.LocalizedURL(utils.URLPathClean("/" + strings.ReplaceAll(paginatePath, ":num", fmt.Sprint(n))))
 		// An extensionless path is a directory index (Jekyll writes
 		// page2/index.html); the trailing slash is how jigyll routes those.
 		if path.Ext(url) == "" && !strings.HasSuffix(url, "/") {

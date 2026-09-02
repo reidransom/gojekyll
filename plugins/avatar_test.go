@@ -24,6 +24,7 @@ func (s siteFake) Pages() []Page                                 { return nil }
 func (s siteFake) Posts() []Page                                 { return nil }
 func (s siteFake) TemplateEngine() *liquid.Engine                { return s.e }
 func (s siteFake) HasRoute(string) bool                          { return false }
+func (s siteFake) LocalizedURL(url string) string                { return url }
 func (s siteFake) FilenameURLPath(string) (string, bool)         { return "", false }
 func (s siteFake) ToLiquid() interface{} {
 	return liquid.IterationKeyedMap(s.c.Variables())

@@ -154,6 +154,17 @@ localization:
 	}
 }
 
+func TestValidBCP47RejectsRepeatedVariantsAndExtensionSingletons(t *testing.T) {
+	for _, tag := range []string{
+		"sl-rozaj-ROZAJ",
+		"en-a-foo-A-bar",
+	} {
+		require.False(t, validBCP47(tag), tag)
+	}
+	require.True(t, validBCP47("sl-rozaj-biske-1994"))
+	require.True(t, validBCP47("en-a-foo-b-bar"))
+}
+
 func TestLocalizationConfigRejectsFallbackFailuresDeterministically(t *testing.T) {
 	src := []byte(`
 localization:

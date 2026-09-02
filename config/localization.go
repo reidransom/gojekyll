@@ -452,10 +452,22 @@ func validBCP47(tag string) bool {
 	if index < len(parts) && ((len(parts[index]) == 2 && allLetters(parts[index])) || (len(parts[index]) == 3 && allDigits(parts[index]))) {
 		index++
 	}
+	variants := make(map[string]struct{})
 	for index < len(parts) && validVariant(parts[index]) {
+		variant := strings.ToLower(parts[index])
+		if _, found := variants[variant]; found {
+			return false
+		}
+		variants[variant] = struct{}{}
 		index++
 	}
+	singletons := make(map[string]struct{})
 	for index < len(parts) && validExtensionSingleton(parts[index]) {
+		singleton := strings.ToLower(parts[index])
+		if _, found := singletons[singleton]; found {
+			return false
+		}
+		singletons[singleton] = struct{}{}
 		index++
 		start := index
 		for index < len(parts) && len(parts[index]) >= 2 && len(parts[index]) <= 8 && allAlphaNumeric(parts[index]) {

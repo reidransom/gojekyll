@@ -31,19 +31,38 @@ func (s *Site) HasRoute(url string) bool {
 // AddPage is in the plugins.Site interface. It registers a plugin-created
 // page so that it is rendered, routed, and listed in site.pages.
 func (s *Site) AddPage(p Page) {
+	if localizedURL := s.LocalizedURL(p.URL()); localizedURL != p.URL() {
+		p = localizedPluginPage{Page: p, url: localizedURL}
+	}
 	s.AddDocument(p, true)
 	s.nonCollectionPages = append(s.nonCollectionPages, p)
 }
 
+type localizedPluginPage struct {
+	Page
+	url string
+}
+
+func (p localizedPluginPage) URL() string { return p.url }
+
+// LocalizedURL returns url at this site's locale prefix. Generators use it to
+// look up and create routes without knowing whether they run for an ordinary
+// or a prepared locale site.
+func (s *Site) LocalizedURL(url string) string {
+	if s.localePrefix == "" || strings.HasPrefix(url, "/"+s.localePrefix+"/") || url == "/"+s.localePrefix {
+		return url
+	}
+	trailingSlash := strings.HasSuffix(url, "/")
+	url = utils.URLPathClean("/" + s.localePrefix + "/" + strings.TrimPrefix(url, "/"))
+	if trailingSlash && !strings.HasSuffix(url, "/") {
+		url += "/"
+	}
+	return url
+}
+
 // AddHTMLPage is in the plugins.Site interface.
 func (s *Site) AddHTMLPage(url string, src string, fm pages.FrontMatter) {
-	if s.localePrefix != "" && !strings.HasPrefix(url, "/"+s.localePrefix+"/") && url != "/"+s.localePrefix {
-		trailingSlash := strings.HasSuffix(url, "/")
-		url = utils.URLPathClean("/" + s.localePrefix + "/" + strings.TrimPrefix(url, "/"))
-		if trailingSlash && !strings.HasSuffix(url, "/") {
-			url += "/"
-		}
-	}
+	url = s.LocalizedURL(url)
 	tpl, err := s.TemplateEngine().ParseTemplate([]byte(src))
 	if err != nil {
 		panic(err)

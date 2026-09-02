@@ -21,34 +21,34 @@ explicit_null: shared
 type_change:
   shared: value
 `)
-	writeDataFile(t, dataDir, "locales/en/base.yml", `
-site:
+	writeDataFile(t, dataDir, "locales/en/site.yml", `
   nested:
     english: value
 sequence: [english]
 explicit_null: null
-messages:
-  nav:
-    home: Home
-    english: English only
 `)
-	writeDataFile(t, dataDir, "locales/fr/base.yml", `
-site:
+	writeDataFile(t, dataDir, "locales/en/messages.yml", `
+nav:
+  home: Home
+  english: English only
+`)
+	writeDataFile(t, dataDir, "locales/fr/site.yml", `
   nested:
     french: value
 sequence: [français]
 type_change: replaced scalar
-messages:
-  nav:
-    french: Français seulement
 `)
-	writeDataFile(t, dataDir, "locales/de/base.yml", `
-site:
+	writeDataFile(t, dataDir, "locales/fr/messages.yml", `
+nav:
+  french: Français seulement
+`)
+	writeDataFile(t, dataDir, "locales/de/site.yml", `
   nested:
     german: value
-messages:
-  nav:
-    home: Startseite
+`)
+	writeDataFile(t, dataDir, "locales/de/messages.yml", `
+nav:
+  home: Startseite
 `)
 
 	catalog, err := DiscoverData(dataDir, localizationConfig(t, "error"))
@@ -78,6 +78,15 @@ messages:
 	require.NoError(t, err)
 	require.Equal(t, "common", again["site"].(map[string]interface{})["nested"].(map[string]interface{})["shared"])
 	require.Equal(t, []interface{}{"français"}, again["sequence"])
+
+	english, err := catalog.Data("en")
+	require.NoError(t, err)
+	require.Equal(t, "value", english["site"].(map[string]interface{})["nested"].(map[string]interface{})["english"])
+	messages, err := catalog.Messages("en")
+	require.NoError(t, err)
+	message, err := messages.Translate("nav.home")
+	require.NoError(t, err)
+	require.Equal(t, "Home", message)
 	require.Equal(t, "common", catalog.Shared()["site"].(map[string]interface{})["nested"].(map[string]interface{})["shared"])
 }
 

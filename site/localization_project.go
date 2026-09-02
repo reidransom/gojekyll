@@ -524,11 +524,11 @@ func (p *localizationProject) bindLocalizationContexts() error {
 					return fmt.Errorf("prepared locale %q is not configured", candidateSite.localeKey)
 				}
 				context.pageInfo[page] = localizedPageInfo{identity: identity, locale: locale, page: page, all: all}
+				context.routePages[page.URL()] = page
+				if candidateSite == site {
+					context.routePages[localeRelativeRoute(site.localePrefix, page.URL())] = page
+				}
 			}
-		}
-		for _, page := range allPages[site] {
-			context.routePages[page.URL()] = page
-			context.routePages[localeRelativeRoute(site.localePrefix, page.URL())] = page
 		}
 		context.sharedAssets = sharedAssets
 	}
@@ -548,6 +548,9 @@ func discoverLocalizedDocuments(site *Site) ([]localization.Document, error) {
 		document, err := localization.DiscoverDocument(&site.cfg, source, relativePath, namespace, typename)
 		if err != nil {
 			return err
+		}
+		if !localizedDocumentEligible(document, site.cfg) {
+			document.Included = false
 		}
 		documents = append(documents, document)
 		return nil
@@ -581,32 +584,60 @@ func discoverLocalizedDocuments(site *Site) ([]localization.Document, error) {
 	}
 	sort.Strings(collectionNames)
 	for _, name := range collectionNames {
-		directory := filepath.Join(site.SourceDir(), "_"+name)
-		err := filepath.Walk(directory, func(filename string, info os.FileInfo, err error) error {
-			if err != nil {
-				if os.IsNotExist(err) {
-					return nil
-				}
-				return err
-			}
-			if info.IsDir() {
-				return nil
-			}
-			relativePath, err := filepath.Rel(site.SourceDir(), filename)
-			if err != nil {
-				return err
-			}
-			relativePath = filepath.ToSlash(relativePath)
-			if site.Exclude(relativePath) {
-				return nil
-			}
-			return discover(filename, relativePath, name, name)
-		})
-		if err != nil {
-			return nil, fmt.Errorf("discovering localized collection %q: %w", name, err)
+		if err := discoverLocalizedCollection(site, "_"+name, name, discover); err != nil {
+			return nil, err
+		}
+	}
+	if site.cfg.Drafts {
+		if err := discoverLocalizedCollection(site, "_drafts", "posts", discover); err != nil {
+			return nil, err
 		}
 	}
 	return documents, nil
+}
+
+func discoverLocalizedCollection(site *Site, directory, namespace string, discover func(source, relativePath, namespace, typename string) error) error {
+	root := filepath.Join(site.SourceDir(), directory)
+	err := filepath.Walk(root, func(filename string, info os.FileInfo, err error) error {
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relativePath, err := filepath.Rel(site.SourceDir(), filename)
+		if err != nil {
+			return err
+		}
+		relativePath = filepath.ToSlash(relativePath)
+		if site.Exclude(relativePath) {
+			return nil
+		}
+		return discover(filename, relativePath, namespace, namespace)
+	})
+	if err != nil {
+		return fmt.Errorf("discovering localized collection %q: %w", namespace, err)
+	}
+	return nil
+}
+
+func localizedDocumentEligible(document localization.Document, cfg config.Config) bool {
+	if !document.Included || document.Namespace != "posts" {
+		return document.Included
+	}
+	filename := filepath.Base(document.RelativePath)
+	date, _, dated := utils.ParseFilenameDateTitle(filename)
+	if strings.HasPrefix(document.RelativePath, "_drafts/") {
+		if !cfg.Drafts {
+			return false
+		}
+	} else if !dated {
+		return false
+	}
+	return cfg.Future || !dated || !date.After(time.Now())
 }
 
 type routeOwner struct {

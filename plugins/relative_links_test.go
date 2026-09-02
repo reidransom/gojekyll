@@ -23,6 +23,7 @@ func (s relativeLinksTestSite) Posts() []Page                                 { 
 func (s relativeLinksTestSite) TemplateEngine() *liquid.Engine                { return nil }
 func (s relativeLinksTestSite) RemoveRoute(string)                            {}
 func (s relativeLinksTestSite) HasRoute(string) bool                          { return false }
+func (s relativeLinksTestSite) LocalizedURL(url string) string             { return url }
 func (s relativeLinksTestSite) FilenameURLPath(path string) (string, bool) {
 	if url, found := s.pages[path]; found {
 		return url, true

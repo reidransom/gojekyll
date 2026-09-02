@@ -4,9 +4,11 @@ title: Localization acceptance
 plugins:
   - jekyll-feed
   - jekyll-sitemap
+  - jekyll-paginate
 collections:
   guides:
     output: true
+paginate: 1
 localization:
   default_language: en
   default_language_in_subdir: false
