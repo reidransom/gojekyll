@@ -16,14 +16,14 @@ site:
   shared: common
   nested:
     shared: common
-sequence: [shared]
-explicit_null: shared
-type_change:
-  shared: value
+  sequence: [shared]
+  explicit_null: shared
+  type_change:
+    shared: value
 `)
 	writeDataFile(t, dataDir, "locales/en/site.yml", `
-  nested:
-    english: value
+nested:
+  english: value
 sequence: [english]
 explicit_null: null
 `)
@@ -33,8 +33,8 @@ nav:
   english: English only
 `)
 	writeDataFile(t, dataDir, "locales/fr/site.yml", `
-  nested:
-    french: value
+nested:
+  french: value
 sequence: [français]
 type_change: replaced scalar
 `)
@@ -43,8 +43,8 @@ nav:
   french: Français seulement
 `)
 	writeDataFile(t, dataDir, "locales/de/site.yml", `
-  nested:
-    german: value
+nested:
+  german: value
 `)
 	writeDataFile(t, dataDir, "locales/de/messages.yml", `
 nav:
@@ -56,7 +56,7 @@ nav:
 
 	shared := catalog.Shared()
 	require.NotContains(t, shared, "locales")
-	require.Equal(t, "shared", shared["explicit_null"])
+	require.Equal(t, "shared", shared["site"].(map[string]interface{})["explicit_null"])
 
 	de, err := catalog.Data("de")
 	require.NoError(t, err)
