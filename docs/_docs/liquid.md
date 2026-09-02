@@ -92,3 +92,15 @@ non-numeric input renders as empty. Configure the currency in `_config.yml`:
 currency: USD          # code shown by money_with_currency (default: USD)
 currency_symbol: "$"   # symbol prefix (default: $)
 ```
+
+## Localization filters
+
+Localized sites add `translation`, `localized_url`, and `translate`.
+`translation` returns a published sibling edition for a locale key.
+`localized_url` resolves a page or known content route through the translation
+catalog; it preserves query strings and fragments but rejects unknown internal
+routes. `translate` reads dotted keys from the active locale's message catalog.
+
+`relative_url` and `absolute_url` keep their existing base-path and deployment
+URL behavior; they do not select a locale. See
+[Localization](/docs/localization/) for the complete page and site contract.

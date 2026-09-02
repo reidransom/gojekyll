@@ -166,6 +166,16 @@ sass:
 > `sass` executable on your `PATH`. Compiled CSS is cached in
 > `/tmp/jigyll-$USER`, not `./.sass-cache`.
 
+## Localization
+
+Native localization is configured through `localization:`. It validates locale
+keys, BCP 47 tags, fallback chains, and locale metadata before Jigyll renders
+any output. Localized builds reject `incremental: true`, rebuild the complete
+project on source changes, and publish one staged generation at a time.
+
+See [Localization](/docs/localization/) for configuration, content-edition,
+data, message, and URL-filter examples.
+
 ## Incremental regeneration
 
 As in Jekyll, pass `--incremental` (`-I`) or set `incremental: true` to only
