@@ -16,14 +16,14 @@ site:
   shared: common
   nested:
     shared: common
-sequence: [shared]
-explicit_null: shared
-type_change:
-  shared: value
+  sequence: [shared]
+  explicit_null: shared
+  type_change:
+    shared: value
 `)
 	writeDataFile(t, dataDir, "locales/en/site.yml", `
-  nested:
-    english: value
+nested:
+  english: value
 sequence: [english]
 explicit_null: null
 `)
@@ -33,8 +33,8 @@ nav:
   english: English only
 `)
 	writeDataFile(t, dataDir, "locales/fr/site.yml", `
-  nested:
-    french: value
+nested:
+  french: value
 sequence: [français]
 type_change: replaced scalar
 `)
@@ -43,8 +43,8 @@ nav:
   french: Français seulement
 `)
 	writeDataFile(t, dataDir, "locales/de/site.yml", `
-  nested:
-    german: value
+nested:
+  german: value
 `)
 	writeDataFile(t, dataDir, "locales/de/messages.yml", `
 nav:
@@ -56,7 +56,7 @@ nav:
 
 	shared := catalog.Shared()
 	require.NotContains(t, shared, "locales")
-	require.Equal(t, "shared", shared["explicit_null"])
+	require.Equal(t, "shared", shared["site"].(map[string]interface{})["explicit_null"])
 
 	de, err := catalog.Data("de")
 	require.NoError(t, err)
@@ -68,16 +68,17 @@ nav:
 		"french":  "value",
 		"german":  "value",
 	}, nested)
-	require.Equal(t, []interface{}{"français"}, de["sequence"])
-	require.Nil(t, de["explicit_null"])
-	require.Equal(t, "replaced scalar", de["type_change"])
+	require.Equal(t, []interface{}{"français"}, site["sequence"])
+	require.Nil(t, site["explicit_null"])
+	require.Equal(t, "replaced scalar", site["type_change"])
 
 	nested["shared"] = "mutated"
-	de["sequence"].([]interface{})[0] = "mutated"
+	site["sequence"].([]interface{})[0] = "mutated"
 	again, err := catalog.Data("de")
 	require.NoError(t, err)
-	require.Equal(t, "common", again["site"].(map[string]interface{})["nested"].(map[string]interface{})["shared"])
-	require.Equal(t, []interface{}{"français"}, again["sequence"])
+	againSite := again["site"].(map[string]interface{})
+	require.Equal(t, "common", againSite["nested"].(map[string]interface{})["shared"])
+	require.Equal(t, []interface{}{"français"}, againSite["sequence"])
 
 	english, err := catalog.Data("en")
 	require.NoError(t, err)
