@@ -23,6 +23,7 @@ type Config struct {
 	Collections map[string]map[string]interface{} `yaml:"-"`
 	Theme       string
 	RemoteTheme string `yaml:"remote_theme"`
+	Localization *LocalizationConfig `yaml:"localization"`
 
 	// Handling Reading
 	Include     []string
@@ -388,6 +389,9 @@ func Unmarshal(bytes []byte, c *Config) error {
 	}
 	if len(c.Plugins) == 0 {
 		c.Plugins = compat.Gems
+	}
+	if err := c.Localization.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
