@@ -2,6 +2,7 @@ package site
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -37,7 +38,8 @@ type localizationProject struct {
 	data            *localization.DataCatalog
 	locales         []config.Locale
 	prepared        []*Site
-	aggregateRoutes []aggregateRoute
+	aggregateRoutes    []aggregateRoute
+	aggregateDocuments []aggregateDocument
 }
 
 // aggregateRoute is the project-level handoff for aggregate generators. An
@@ -142,6 +144,9 @@ func (p *localizationProject) Build() (int, error) {
 		}
 		p.prepared = append(p.prepared, site)
 	}
+	if err := p.prepareAggregateDocuments(); err != nil {
+		return 0, err
+	}
 	if err := p.validateRoutes(); err != nil {
 		return 0, err
 	}
@@ -165,6 +170,18 @@ func (p *localizationProject) Build() (int, error) {
 			if err := site.WriteDoc(document); err != nil {
 				return count, fmt.Errorf("writing locale %q: %w", site.localeKey, err)
 			}
+		}
+	}
+	for _, aggregate := range p.aggregateDocuments {
+		count++
+		if p.base.cfg.DryRun {
+			if err := aggregate.document.Write(io.Discard); err != nil {
+				return count, fmt.Errorf("rendering aggregate %q: %w", aggregate.document.URL(), err)
+			}
+			continue
+		}
+		if err := aggregate.site.WriteDoc(aggregate.document); err != nil {
+			return count, fmt.Errorf("writing aggregate %q: %w", aggregate.document.URL(), err)
 		}
 	}
 	if p.base.cfg.DryRun {
