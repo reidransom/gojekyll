@@ -47,6 +47,9 @@ type Manager struct {
 type Options struct {
 	RelativeFilenameToURL tags.LinkTagHandler
 	ThemeDir              string
+	// Localization registers catalog-aware Liquid filters for one locale site.
+	// It must be supplied before this manager creates its Liquid engine.
+	Localization filters.LocalizationContext
 }
 
 // New makes a rendering manager.
@@ -185,6 +188,9 @@ func (p *Manager) makeLiquidEngine() *liquid.Engine {
 		engine.LaxFilters()
 	}
 	filters.AddJekyllFilters(engine, &p.cfg, p.SassIncludePaths()...)
+	if p.Localization != nil {
+		filters.AddLocalizationFilters(engine, p.Localization)
+	}
 	tags.AddJekyllTags(engine, &p.cfg, dirs, p.RelativeFilenameToURL)
 	return engine
 }
