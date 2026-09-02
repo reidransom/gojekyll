@@ -61,6 +61,17 @@ func (p *page) ToLiquid() interface{} {
 		// de facto
 		"ext": ext,
 	}
+	if localization, ok := pageLocalization(p.site, p); ok {
+		data["language"] = localeDrop(localization.Language)
+		data["translation_key"] = localization.TranslationKey
+		data["translations"] = localization.Translations
+		data["all_translations"] = localization.AllTranslations
+		alternates := make([]map[string]interface{}, len(localization.Alternates))
+		for index, alternate := range localization.Alternates {
+			alternates[index] = alternateDrop(alternate)
+		}
+		data["alternates"] = alternates
+	}
 	if p.IsPost() {
 		if _, hasDate := fm["date"]; !hasDate {
 			data["date"] = p.PostDate()
