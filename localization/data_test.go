@@ -56,7 +56,7 @@ messages:
 
 	shared := catalog.Shared()
 	require.NotContains(t, shared, "locales")
-	require.Equal(t, "common", shared["explicit_null"])
+	require.Equal(t, "shared", shared["explicit_null"])
 
 	de, err := catalog.Data("de")
 	require.NoError(t, err)
