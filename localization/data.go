@@ -76,10 +76,10 @@ func (c *DataCatalog) Messages(locale string) (*MessageCatalog, error) {
 		return nil, err
 	}
 	return &MessageCatalog{
-		overlays:    c.overlays,
-		chain:       append([]string(nil), chain...),
+		overlays:     c.overlays,
+		chain:        append([]string(nil), chain...),
 		activeLocale: locale,
-		missingMode: c.missingMode,
+		missingMode:  c.missingMode,
 	}, nil
 }
 
@@ -137,47 +137,7 @@ func discoverData(dir string, locales *config.LocalizationConfig) (map[string]in
 		return nil, nil, fmt.Errorf("reading data directory %q: %w", dir, err)
 	}
 
-	shared := make(map[string]interface{})
-	claims := make(map[string]string)
-	var problems []string
-	var localeDir string
-	for _, entry := range entries {
-		path := filepath.Join(dir, entry.Name())
-		if entry.Name() == "locales" && entry.IsDir() {
-			claims["locales"] = "locales"
-			localeDir = path
-			continue
-		}
-		if dataExtension(filepath.Ext(entry.Name())) && strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) == "locales" {
-			if prior, exists := claims["locales"]; exists {
-				problems = append(problems, fmt.Sprintf("data key %q is defined by both %q and %q", "locales", prior, entry.Name()))
-			} else {
-				problems = append(problems, fmt.Sprintf("reserved locale data path %q must be a directory", entry.Name()))
-			}
-			continue
-		}
-		if dataExtension(filepath.Ext(entry.Name())) && strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) == "shared" {
-			if prior, exists := claims["shared"]; exists {
-				problems = append(problems, fmt.Sprintf("data key %q is defined by both %q and %q", "shared", prior, entry.Name()))
-				continue
-			}
-			claims["shared"] = entry.Name()
-			value, err := readDataFile(path)
-			if err != nil {
-				problems = append(problems, fmt.Sprintf("reading data file %q: %v", entry.Name(), err))
-				continue
-			}
-			values, ok := value.(map[string]interface{})
-			if !ok {
-				problems = append(problems, fmt.Sprintf("shared data file %q must contain a mapping", entry.Name()))
-				continue
-			}
-			shared = mergeMaps(shared, values)
-			continue
-		}
-		readDataEntry(path, entry, entry.Name(), shared, claims, &problems)
-	}
-
+	shared, localeDir, problems := discoverSharedData(dir, entries)
 	overlays := make(map[string]map[string]interface{})
 	if localeDir != "" {
 		discoverLocaleOverlays(localeDir, locales, overlays, &problems)
@@ -187,6 +147,75 @@ func discoverData(dir string, locales *config.LocalizationConfig) (map[string]in
 		return nil, nil, &DataValidationError{Problems: problems}
 	}
 	return shared, overlays, nil
+}
+
+func discoverSharedData(dir string, entries []os.DirEntry) (map[string]interface{}, string, []string) {
+	shared := make(map[string]interface{})
+	claims := make(map[string]string)
+	var problems []string
+	var localeDir string
+	for _, entry := range entries {
+		if localePath, claimed := discoverSharedDataEntry(dir, entry, shared, claims, &problems); claimed {
+			localeDir = localePath
+		}
+	}
+	return shared, localeDir, problems
+}
+
+func discoverSharedDataEntry(dir string, entry os.DirEntry, shared map[string]interface{}, claims map[string]string, problems *[]string) (string, bool) {
+	path := filepath.Join(dir, entry.Name())
+	if entry.Name() == "locales" && entry.IsDir() {
+		claims["locales"] = "locales"
+		return path, true
+	}
+	if !dataExtension(filepath.Ext(entry.Name())) {
+		readDataEntry(path, entry, entry.Name(), shared, claims, problems)
+		return "", false
+	}
+
+	key := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+	switch key {
+	case "locales":
+		appendReservedLocaleFileProblem(entry.Name(), claims, problems)
+	case "shared":
+		readSharedDataFile(path, entry.Name(), shared, claims, problems)
+	default:
+		readDataEntry(path, entry, entry.Name(), shared, claims, problems)
+	}
+	return "", false
+}
+
+func appendReservedLocaleFileProblem(name string, claims map[string]string, problems *[]string) {
+	if prior, exists := claims["locales"]; exists {
+		*problems = append(*problems, fmt.Sprintf("data key %q is defined by both %q and %q", "locales", prior, name))
+		return
+	}
+	*problems = append(*problems, fmt.Sprintf("reserved locale data path %q must be a directory", name))
+}
+
+func readSharedDataFile(path, name string, shared map[string]interface{}, claims map[string]string, problems *[]string) {
+	if prior, exists := claims["shared"]; exists {
+		*problems = append(*problems, fmt.Sprintf("data key %q is defined by both %q and %q", "shared", prior, name))
+		return
+	}
+	claims["shared"] = name
+	value, err := readDataFile(path)
+	if err != nil {
+		*problems = append(*problems, fmt.Sprintf("reading data file %q: %v", name, err))
+		return
+	}
+	values, ok := value.(map[string]interface{})
+	if !ok {
+		*problems = append(*problems, fmt.Sprintf("shared data file %q must contain a mapping", name))
+		return
+	}
+	mergeSharedData(shared, values)
+}
+
+func mergeSharedData(shared, values map[string]interface{}) {
+	for key, value := range mergeMaps(shared, values) {
+		shared[key] = value
+	}
 }
 
 func discoverLocaleOverlays(dir string, locales *config.LocalizationConfig, overlays map[string]map[string]interface{}, problems *[]string) {

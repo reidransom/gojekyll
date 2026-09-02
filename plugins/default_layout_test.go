@@ -37,7 +37,7 @@ func (m *mockSite) HasLayout(name string) bool {
 func (m *mockSite) FilenameURLPath(string) (string, bool) { return "", false }
 func (m *mockSite) RemoveRoute(string)                    {}
 func (m *mockSite) HasRoute(string) bool                  { return false }
-func (m *mockSite) LocalizedURL(url string) string { return url }
+func (m *mockSite) LocalizedURL(url string) string        { return url }
 
 // mockPage implements the Page interface for testing
 type mockPage struct {

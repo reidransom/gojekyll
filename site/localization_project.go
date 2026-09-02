@@ -198,36 +198,57 @@ type localizedSitemapEntry struct {
 }
 
 func (p *localizationProject) localizedSitemapEntries() []plugins.SitemapEntry {
+	entries := p.collectLocalizedSitemapEntries(sitemapEditions(p.catalog))
+	assignSitemapAlternates(entries, p.base.cfg.Localization.DefaultLanguage)
+	result := make([]plugins.SitemapEntry, len(entries))
+	for index, entry := range entries {
+		result[index] = entry.entry
+	}
+	return result
+}
+
+func sitemapEditions(catalog *localization.Catalog) map[string]localization.Edition {
 	editions := make(map[string]localization.Edition)
-	for _, input := range p.catalog.PreparedInputs() {
+	for _, input := range catalog.PreparedInputs() {
 		for _, edition := range input.Documents {
 			editions[edition.Source] = edition
 		}
 	}
+	return editions
+}
 
+func (p *localizationProject) collectLocalizedSitemapEntries(editions map[string]localization.Edition) []localizedSitemapEntry {
 	entries := make([]localizedSitemapEntry, 0)
 	for _, site := range p.prepared {
 		for _, document := range site.OutputDocs() {
-			if !sitemapEligible(site, document) {
-				continue
+			if sitemapEligible(site, document) {
+				entries = append(entries, localizedSitemapEntryFor(site, document, editions))
 			}
-			entry := localizedSitemapEntry{
-				site: site,
-				entry: plugins.SitemapEntry{
-					URL:          sitemapAbsoluteURL(site, document.URL()),
-					LastModified: sitemapLastModified(document),
-				},
-			}
-			if page, ok := document.(pages.Page); ok {
-				entry.page = page
-				if edition, found := editions[page.Source()]; found && edition.TranslationKey != "" {
-					entry.identity = localization.Identity{Namespace: edition.Namespace, TranslationKey: edition.TranslationKey}
-				}
-			}
-			entries = append(entries, entry)
 		}
 	}
+	return entries
+}
 
+func localizedSitemapEntryFor(site *Site, document Document, editions map[string]localization.Edition) localizedSitemapEntry {
+	entry := localizedSitemapEntry{
+		site: site,
+		entry: plugins.SitemapEntry{
+			URL:          sitemapAbsoluteURL(site, document.URL()),
+			LastModified: sitemapLastModified(document),
+		},
+	}
+	page, ok := document.(pages.Page)
+	if !ok {
+		return entry
+	}
+	entry.page = page
+	if edition, found := editions[page.Source()]; found && edition.TranslationKey != "" {
+		entry.identity = localization.Identity{Namespace: edition.Namespace, TranslationKey: edition.TranslationKey}
+	}
+	return entry
+}
+
+func assignSitemapAlternates(entries []localizedSitemapEntry, defaultLanguage string) {
 	groups := make(map[localization.Identity][]int)
 	for index, entry := range entries {
 		if entry.page != nil && entry.identity.TranslationKey != "" {
@@ -235,25 +256,24 @@ func (p *localizationProject) localizedSitemapEntries() []plugins.SitemapEntry {
 		}
 	}
 	for _, group := range groups {
-		alternates := make([]plugins.SitemapAlternate, 0, len(group))
-		for _, index := range group {
-			entry := entries[index]
-			alternates = append(alternates, plugins.SitemapAlternate{
-				Language: entry.site.localizationContext.locale.Tag,
-				URL:      entry.entry.URL,
-				XDefault: entry.site.localeKey == p.base.cfg.Localization.DefaultLanguage,
-			})
-		}
+		alternates := sitemapAlternates(entries, group, defaultLanguage)
 		for _, index := range group {
 			entries[index].entry.Alternates = append([]plugins.SitemapAlternate(nil), alternates...)
 		}
 	}
+}
 
-	result := make([]plugins.SitemapEntry, len(entries))
-	for index, entry := range entries {
-		result[index] = entry.entry
+func sitemapAlternates(entries []localizedSitemapEntry, group []int, defaultLanguage string) []plugins.SitemapAlternate {
+	alternates := make([]plugins.SitemapAlternate, 0, len(group))
+	for _, index := range group {
+		entry := entries[index]
+		alternates = append(alternates, plugins.SitemapAlternate{
+			Language: entry.site.localizationContext.locale.Tag,
+			URL:      entry.entry.URL,
+			XDefault: entry.site.localeKey == defaultLanguage,
+		})
 	}
-	return result
+	return alternates
 }
 
 func sitemapEligible(site *Site, document Document) bool {
@@ -334,63 +354,13 @@ func newLocalizationProject(base *Site) (*localizationProject, error) {
 // collections, routes, renderer, and plugin instances. Static files are read
 // only by the first locale site and therefore retain project-root URLs.
 func (p *localizationProject) Build() (int, error) {
-	stage := ""
-	if !p.base.cfg.DryRun {
-		var err error
-		stage, err = os.MkdirTemp(filepath.Dir(p.base.DestDir()), ".jigyll-localized-")
-		if err != nil {
-			return 0, err
-		}
-		defer os.RemoveAll(stage)
-
-		if err := copyKeepFiles(p.base.DestDir(), stage, p.base.cfg.KeepFiles); err != nil {
-			return 0, err
-		}
+	stage, cleanup, err := p.localizedBuildStage()
+	if err != nil {
+		return 0, err
 	}
-	inputs := make(map[string]map[string]struct{}, len(p.locales))
-	for _, input := range p.catalog.PreparedInputs() {
-		sources := make(map[string]struct{}, len(input.Documents))
-		for _, edition := range input.Documents {
-			sources[edition.Source] = struct{}{}
-		}
-		inputs[input.Locale.Key] = sources
-	}
-	for index, locale := range p.locales {
-		localeData, err := p.data.Data(locale.Key)
-		if err != nil {
-			return 0, err
-		}
-		derived, err := p.base.cfg.DeriveLocale(locale.Key)
-		if err != nil {
-			return 0, err
-		}
-		messages, err := p.data.Messages(locale.Key)
-		if err != nil {
-			return 0, err
-		}
-		if stage != "" {
-			derived.Destination = stage
-		}
-		site := New(p.base.flags)
-		site.cfg = derived
-		site.localeKey = locale.Key
-		site.localePrefix = localeRoutePrefix(p.base.cfg.Localization, locale)
-		site.includeStatic = index == 0
-		site.data = localeData
-		site.localizedSources = inputs[locale.Key]
-		site.localizationContext = &localizedSiteContext{
-			site:         site,
-			locale:       locale,
-			registry:     p.base.cfg.Localization,
-			messages:     messages,
-			pageInfo:     make(map[pages.Page]localizedPageInfo),
-			routePages:   make(map[string]pages.Page),
-			sharedAssets: make(map[string]struct{}),
-		}
-		if err := site.Read(); err != nil {
-			return 0, fmt.Errorf("preparing locale %q: %w", locale.Key, err)
-		}
-		p.prepared = append(p.prepared, site)
+	defer cleanup()
+	if err := p.prepareLocaleSites(stage, p.localizedInputs()); err != nil {
+		return 0, err
 	}
 	if err := p.prepareAggregateDocuments(); err != nil {
 		return 0, err
@@ -402,6 +372,93 @@ func (p *localizationProject) Build() (int, error) {
 		return 0, err
 	}
 
+	count, err := p.renderLocaleSites()
+	if err != nil {
+		return count, err
+	}
+	if count, err = p.renderAggregateDocuments(count); err != nil {
+		return count, err
+	}
+	return p.finishLocalizedBuild(stage, count)
+}
+
+func (p *localizationProject) localizedBuildStage() (string, func(), error) {
+	if p.base.cfg.DryRun {
+		return "", func() {}, nil
+	}
+	stage, err := os.MkdirTemp(filepath.Dir(p.base.DestDir()), ".jigyll-localized-")
+	if err != nil {
+		return "", nil, err
+	}
+	if err := copyKeepFiles(p.base.DestDir(), stage, p.base.cfg.KeepFiles); err != nil {
+		os.RemoveAll(stage)
+		return "", nil, err
+	}
+	return stage, func() { os.RemoveAll(stage) }, nil
+}
+
+func (p *localizationProject) localizedInputs() map[string]map[string]struct{} {
+	inputs := make(map[string]map[string]struct{}, len(p.locales))
+	for _, input := range p.catalog.PreparedInputs() {
+		sources := make(map[string]struct{}, len(input.Documents))
+		for _, edition := range input.Documents {
+			sources[edition.Source] = struct{}{}
+		}
+		inputs[input.Locale.Key] = sources
+	}
+	return inputs
+}
+
+func (p *localizationProject) prepareLocaleSites(stage string, inputs map[string]map[string]struct{}) error {
+	for index, locale := range p.locales {
+		site, err := p.prepareLocaleSite(stage, inputs[locale.Key], locale, index == 0)
+		if err != nil {
+			return err
+		}
+		p.prepared = append(p.prepared, site)
+	}
+	return nil
+}
+
+func (p *localizationProject) prepareLocaleSite(stage string, sources map[string]struct{}, locale config.Locale, includeStatic bool) (*Site, error) {
+	localeData, err := p.data.Data(locale.Key)
+	if err != nil {
+		return nil, err
+	}
+	derived, err := p.base.cfg.DeriveLocale(locale.Key)
+	if err != nil {
+		return nil, err
+	}
+	messages, err := p.data.Messages(locale.Key)
+	if err != nil {
+		return nil, err
+	}
+	if stage != "" {
+		derived.Destination = stage
+	}
+	site := New(p.base.flags)
+	site.cfg = derived
+	site.localeKey = locale.Key
+	site.localePrefix = localeRoutePrefix(p.base.cfg.Localization, locale)
+	site.includeStatic = includeStatic
+	site.data = localeData
+	site.localizedSources = sources
+	site.localizationContext = &localizedSiteContext{
+		site:         site,
+		locale:       locale,
+		registry:     p.base.cfg.Localization,
+		messages:     messages,
+		pageInfo:     make(map[pages.Page]localizedPageInfo),
+		routePages:   make(map[string]pages.Page),
+		sharedAssets: make(map[string]struct{}),
+	}
+	if err := site.Read(); err != nil {
+		return nil, fmt.Errorf("preparing locale %q: %w", locale.Key, err)
+	}
+	return site, nil
+}
+
+func (p *localizationProject) renderLocaleSites() (int, error) {
 	count := 0
 	for _, site := range p.prepared {
 		if err := site.setTimeZone(); err != nil {
@@ -410,28 +467,52 @@ func (p *localizationProject) Build() (int, error) {
 		if err := site.ensureRendered(); err != nil {
 			return count, fmt.Errorf("rendering locale %q: %w", site.localeKey, err)
 		}
-		for _, document := range site.OutputDocs() {
-			count++
-			if site.cfg.DryRun {
-				continue
-			}
+		written, err := writeLocaleDocuments(site)
+		count += written
+		if err != nil {
+			return count, err
+		}
+	}
+	return count, nil
+}
+
+func writeLocaleDocuments(site *Site) (int, error) {
+	count := 0
+	for _, document := range site.OutputDocs() {
+		count++
+		if !site.cfg.DryRun {
 			if err := site.WriteDoc(document); err != nil {
 				return count, fmt.Errorf("writing locale %q: %w", site.localeKey, err)
 			}
 		}
 	}
+	return count, nil
+}
+
+func (p *localizationProject) renderAggregateDocuments(count int) (int, error) {
 	for _, aggregate := range p.aggregateDocuments {
 		count++
-		if p.base.cfg.DryRun {
-			if err := aggregate.document.Write(io.Discard); err != nil {
-				return count, fmt.Errorf("rendering aggregate %q: %w", aggregate.document.URL(), err)
-			}
-			continue
-		}
-		if err := aggregate.site.WriteDoc(aggregate.document); err != nil {
-			return count, fmt.Errorf("writing aggregate %q: %w", aggregate.document.URL(), err)
+		if err := writeAggregateDocument(aggregate, p.base.cfg.DryRun); err != nil {
+			return count, err
 		}
 	}
+	return count, nil
+}
+
+func writeAggregateDocument(aggregate aggregateDocument, dryRun bool) error {
+	if dryRun {
+		if err := aggregate.document.Write(io.Discard); err != nil {
+			return fmt.Errorf("rendering aggregate %q: %w", aggregate.document.URL(), err)
+		}
+		return nil
+	}
+	if err := aggregate.site.WriteDoc(aggregate.document); err != nil {
+		return fmt.Errorf("writing aggregate %q: %w", aggregate.document.URL(), err)
+	}
+	return nil
+}
+
+func (p *localizationProject) finishLocalizedBuild(stage string, count int) (int, error) {
 	routes, err := p.routeIndex()
 	if err != nil {
 		return count, err
@@ -465,7 +546,7 @@ func (p *localizationProject) routeIndex() (map[string]localizedRoute, error) {
 		}
 	}
 	for _, aggregate := range p.aggregateDocuments {
-		route := localizedRoute{site: aggregate.site, document: aggregate.document}
+		route := localizedRoute(aggregate)
 		for _, alias := range localizedRouteAliases(aggregate.document.URL()) {
 			if existing, found := routes[alias]; found && existing.document != aggregate.document {
 				return nil, fmt.Errorf("localized route index collision at %q", alias)
@@ -477,62 +558,78 @@ func (p *localizationProject) routeIndex() (map[string]localizedRoute, error) {
 }
 
 func (p *localizationProject) bindLocalizationContexts() error {
-	editionsBySource := map[string]localization.Edition{}
-	for _, input := range p.catalog.PreparedInputs() {
-		for _, edition := range input.Documents {
-			editionsBySource[edition.Source] = edition
-		}
-	}
-
-	groups := map[localization.Identity]map[string]pages.Page{}
-	allPages := make(map[*Site][]pages.Page, len(p.prepared))
+	editions := sitemapEditions(p.catalog)
+	pagesBySite, groups := localizedPageGroups(p.prepared, editions)
+	sharedAssets := localizedSharedAssets(p.prepared)
 	for _, site := range p.prepared {
-		allPages[site] = site.Pages()
-		for _, page := range allPages[site] {
-			edition, found := editionsBySource[page.Source()]
-			if !found || edition.TranslationKey == "" {
-				continue
-			}
-			identity := localization.Identity{Namespace: edition.Namespace, TranslationKey: edition.TranslationKey}
-			if groups[identity] == nil {
-				groups[identity] = map[string]pages.Page{}
-			}
-			groups[identity][edition.Locale.Key] = page
+		if err := p.bindLocalizationContext(site, pagesBySite, groups, editions); err != nil {
+			return err
 		}
-	}
-	sharedAssets := map[string]struct{}{}
-	for _, site := range p.prepared {
-		for _, document := range site.OutputDocs() {
-			if document.IsStatic() {
-				sharedAssets[document.URL()] = struct{}{}
-			}
-		}
-	}
-
-	for _, site := range p.prepared {
-		context := site.localizationContext
-		for _, candidateSite := range p.prepared {
-			for _, page := range allPages[candidateSite] {
-				edition := editionsBySource[page.Source()]
-				identity := localization.Identity{Namespace: edition.Namespace, TranslationKey: edition.TranslationKey}
-				all := map[string]pages.Page(nil)
-				if identity.TranslationKey != "" {
-					all = groups[identity]
-				}
-				locale, found := p.base.cfg.Localization.Locale(candidateSite.localeKey)
-				if !found {
-					return fmt.Errorf("prepared locale %q is not configured", candidateSite.localeKey)
-				}
-				context.pageInfo[page] = localizedPageInfo{identity: identity, locale: locale, page: page, all: all}
-				context.routePages[page.URL()] = page
-				if candidateSite == site {
-					context.routePages[localeRelativeRoute(site.localePrefix, page.URL())] = page
-				}
-			}
-		}
-		context.sharedAssets = sharedAssets
+		site.localizationContext.sharedAssets = sharedAssets
 	}
 	return nil
+}
+
+func localizedPageGroups(sites []*Site, editions map[string]localization.Edition) (map[*Site][]pages.Page, map[localization.Identity]map[string]pages.Page) {
+	pagesBySite := make(map[*Site][]pages.Page, len(sites))
+	groups := make(map[localization.Identity]map[string]pages.Page)
+	for _, site := range sites {
+		pagesBySite[site] = site.Pages()
+		for _, page := range pagesBySite[site] {
+			edition, found := editions[page.Source()]
+			if found && edition.TranslationKey != "" {
+				identity := localization.Identity{Namespace: edition.Namespace, TranslationKey: edition.TranslationKey}
+				if groups[identity] == nil {
+					groups[identity] = make(map[string]pages.Page)
+				}
+				groups[identity][edition.Locale.Key] = page
+			}
+		}
+	}
+	return pagesBySite, groups
+}
+
+func localizedSharedAssets(sites []*Site) map[string]struct{} {
+	assets := make(map[string]struct{})
+	for _, site := range sites {
+		for _, document := range site.OutputDocs() {
+			if document.IsStatic() {
+				assets[document.URL()] = struct{}{}
+			}
+		}
+	}
+	return assets
+}
+
+func (p *localizationProject) bindLocalizationContext(site *Site, pagesBySite map[*Site][]pages.Page, groups map[localization.Identity]map[string]pages.Page, editions map[string]localization.Edition) error {
+	context := site.localizationContext
+	for _, candidateSite := range p.prepared {
+		locale, found := p.base.cfg.Localization.Locale(candidateSite.localeKey)
+		if !found {
+			return fmt.Errorf("prepared locale %q is not configured", candidateSite.localeKey)
+		}
+		for _, page := range pagesBySite[candidateSite] {
+			context.bindLocalizedPage(site, candidateSite, page, locale, localizedPageIdentity(page, editions), groups)
+		}
+	}
+	return nil
+}
+
+func localizedPageIdentity(page pages.Page, editions map[string]localization.Edition) localization.Identity {
+	edition := editions[page.Source()]
+	return localization.Identity{Namespace: edition.Namespace, TranslationKey: edition.TranslationKey}
+}
+
+func (c *localizedSiteContext) bindLocalizedPage(site, candidateSite *Site, page pages.Page, locale config.Locale, identity localization.Identity, groups map[localization.Identity]map[string]pages.Page) {
+	var all map[string]pages.Page
+	if identity.TranslationKey != "" {
+		all = groups[identity]
+	}
+	c.pageInfo[page] = localizedPageInfo{identity: identity, locale: locale, page: page, all: all}
+	c.routePages[page.URL()] = page
+	if candidateSite == site {
+		c.routePages[localeRelativeRoute(site.localePrefix, page.URL())] = page
+	}
 }
 
 func localeRoutePrefix(localizationConfig *config.LocalizationConfig, locale config.Locale) string {
@@ -555,7 +652,17 @@ func discoverLocalizedDocuments(site *Site) ([]localization.Document, error) {
 		documents = append(documents, document)
 		return nil
 	}
-	if err := filepath.Walk(site.SourceDir(), func(filename string, info os.FileInfo, err error) error {
+	if err := discoverLocalizedPages(site, discover); err != nil {
+		return nil, err
+	}
+	if err := discoverLocalizedCollections(site, discover); err != nil {
+		return nil, err
+	}
+	return documents, nil
+}
+
+func discoverLocalizedPages(site *Site, discover func(string, string, string, string) error) error {
+	err := filepath.Walk(site.SourceDir(), func(filename string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -574,10 +681,14 @@ func discoverLocalizedDocuments(site *Site) ([]localization.Document, error) {
 			return nil
 		}
 		return discover(filename, relativePath, localization.PagesNamespace, "pages")
-	}); err != nil {
-		return nil, fmt.Errorf("discovering localized pages: %w", err)
+	})
+	if err != nil {
+		return fmt.Errorf("discovering localized pages: %w", err)
 	}
+	return nil
+}
 
+func discoverLocalizedCollections(site *Site, discover func(string, string, string, string) error) error {
 	collectionNames := make([]string, 0, len(site.cfg.Collections))
 	for name := range site.cfg.Collections {
 		collectionNames = append(collectionNames, name)
@@ -585,15 +696,13 @@ func discoverLocalizedDocuments(site *Site) ([]localization.Document, error) {
 	sort.Strings(collectionNames)
 	for _, name := range collectionNames {
 		if err := discoverLocalizedCollection(site, "_"+name, name, discover); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	if site.cfg.Drafts {
-		if err := discoverLocalizedCollection(site, "_drafts", "posts", discover); err != nil {
-			return nil, err
-		}
+	if !site.cfg.Drafts {
+		return nil
 	}
-	return documents, nil
+	return discoverLocalizedCollection(site, "_drafts", "posts", discover)
 }
 
 func discoverLocalizedCollection(site *Site, directory, namespace string, discover func(source, relativePath, namespace, typename string) error) error {
@@ -669,57 +778,66 @@ type routeCandidate struct {
 // route map. The map intentionally remains the serving lookup, but it cannot
 // retain a document that a later registration would overwrite.
 func (p *localizationProject) validateRoutes() error {
-	editions := make(map[string]localization.Edition)
-	for _, input := range p.catalog.PreparedInputs() {
-		for _, edition := range input.Documents {
-			editions[edition.Source] = edition
-		}
+	candidates := p.routeCandidates(sitemapEditions(p.catalog))
+	sortRouteCandidates(candidates)
+	problems := append(routeCollisionProblems(candidates), destinationCollisionProblems(candidates)...)
+	if len(problems) == 0 {
+		return nil
 	}
+	sort.Strings(problems)
+	return fmt.Errorf("invalid localized routes:\n - %s", strings.Join(problems, "\n - "))
+}
 
-	var candidates []routeCandidate
-	nextID := 0
-	addDocument := func(site *Site, document Document) {
-		if _, removed := site.removedRoutes[document.URL()]; removed {
-			return
-		}
-		edition, found := editions[document.Source()]
-		namespace := "generated"
-		translationKey := ""
-		if document.IsStatic() {
-			namespace = "static"
-		}
-		if found {
-			namespace = edition.Namespace
-			translationKey = edition.TranslationKey
-		}
-		candidates = append(candidates, routeCandidate{
-			id:          nextID,
-			route:       document.URL(),
-			destination: localizedDestinationPath(document),
-			owner: routeOwner{
-				locale:         site.localeKey,
-				namespace:      namespace,
-				translationKey: translationKey,
-				source:         document.Source(),
-			},
-		})
-		nextID++
-	}
+func (p *localizationProject) routeCandidates(editions map[string]localization.Edition) []routeCandidate {
+	candidates := make([]routeCandidate, 0)
 	for _, site := range p.prepared {
 		for _, document := range site.outputCandidates {
-			addDocument(site, document)
+			candidate, included := localizedDocumentCandidate(len(candidates), site, document, editions)
+			if included {
+				candidates = append(candidates, candidate)
+			}
 		}
 	}
 	for _, aggregate := range p.aggregateRoutes {
 		candidates = append(candidates, routeCandidate{
-			id:          nextID,
+			id:          len(candidates),
 			route:       aggregate.Route,
 			destination: localizedRouteDestination(aggregate.Route),
 			owner:       routeOwner{locale: "project", namespace: "aggregate", source: aggregate.Source},
 		})
-		nextID++
 	}
+	return candidates
+}
 
+func localizedDocumentCandidate(id int, site *Site, document Document, editions map[string]localization.Edition) (routeCandidate, bool) {
+	if _, removed := site.removedRoutes[document.URL()]; removed {
+		return routeCandidate{}, false
+	}
+	return routeCandidate{
+		id:          id,
+		route:       document.URL(),
+		destination: localizedDestinationPath(document),
+		owner:       localizedRouteOwner(site, document, editions[document.Source()]),
+	}, true
+}
+
+func localizedRouteOwner(site *Site, document Document, edition localization.Edition) routeOwner {
+	namespace := "generated"
+	if document.IsStatic() {
+		namespace = "static"
+	}
+	if edition.Source != "" {
+		namespace = edition.Namespace
+	}
+	return routeOwner{
+		locale:         site.localeKey,
+		namespace:      namespace,
+		translationKey: edition.TranslationKey,
+		source:         document.Source(),
+	}
+}
+
+func sortRouteCandidates(candidates []routeCandidate) {
 	sort.Slice(candidates, func(i, j int) bool {
 		left, right := candidates[i], candidates[j]
 		if left.route != right.route {
@@ -736,9 +854,11 @@ func (p *localizationProject) validateRoutes() error {
 		}
 		return left.owner.source < right.owner.source
 	})
+}
 
-	var problems []string
+func routeCollisionProblems(candidates []routeCandidate) []string {
 	publicRoutes := make(map[string]routeCandidate)
+	var problems []string
 	for _, candidate := range candidates {
 		for _, route := range localizedRouteAliases(candidate.route) {
 			if previous, exists := publicRoutes[route]; exists && previous.id != candidate.id {
@@ -748,7 +868,12 @@ func (p *localizationProject) validateRoutes() error {
 			publicRoutes[route] = candidate
 		}
 	}
+	return problems
+}
+
+func destinationCollisionProblems(candidates []routeCandidate) []string {
 	destinations := make(map[string]routeCandidate)
+	var problems []string
 	for _, candidate := range candidates {
 		if previous, exists := destinations[candidate.destination]; exists && previous.id != candidate.id {
 			problems = append(problems, fmt.Sprintf("destination collision at %q between %s and %s", candidate.destination, previous.owner, candidate.owner))
@@ -756,11 +881,7 @@ func (p *localizationProject) validateRoutes() error {
 		}
 		destinations[candidate.destination] = candidate
 	}
-	if len(problems) == 0 {
-		return nil
-	}
-	sort.Strings(problems)
-	return fmt.Errorf("invalid localized routes:\n - %s", strings.Join(problems, "\n - "))
+	return problems
 }
 
 func localizedDestinationPath(document Document) string {

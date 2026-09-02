@@ -68,8 +68,8 @@ func TestLocalizedFilterRegistration(t *testing.T) {
 		routes: map[string]string{
 			"/about/:en": "/about/",
 			"/about/:de": "/de/ueber/",
-			"page:en":   "/about/",
-			"page:de":   "/de/ueber/",
+			"page:en":    "/about/",
+			"page:de":    "/de/ueber/",
 		},
 		messages: map[string]string{"nav.home": "Home"},
 	}

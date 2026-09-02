@@ -16,12 +16,12 @@ import (
 // site's page drops and Liquid filters. Its lookup tables are completed after
 // every locale site is prepared, before any site renders.
 type localizedSiteContext struct {
-	site        *Site
-	locale      config.Locale
-	registry    *config.LocalizationConfig
-	messages    *localization.MessageCatalog
-	pageInfo    map[pages.Page]localizedPageInfo
-	routePages  map[string]pages.Page
+	site         *Site
+	locale       config.Locale
+	registry     *config.LocalizationConfig
+	messages     *localization.MessageCatalog
+	pageInfo     map[pages.Page]localizedPageInfo
+	routePages   map[string]pages.Page
 	sharedAssets map[string]struct{}
 }
 

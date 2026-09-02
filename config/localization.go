@@ -80,6 +80,24 @@ func (l *LocalizationConfig) Validate() error {
 		return nil
 	}
 
+	problems := l.validateSettings()
+	keys := sortedLocaleKeys(l.Locales)
+	seenTags := make(map[string]string, len(keys))
+	for _, key := range keys {
+		locale := l.Locales[key]
+		problems = append(problems, validateLocale(key, l.DefaultLanguage, &locale, seenTags)...)
+		l.Locales[key] = locale
+	}
+	problems = append(problems, l.validateFallbacks(keys)...)
+	problems = append(problems, fallbackCycleProblems(l.Locales)...)
+	if len(problems) == 0 {
+		return nil
+	}
+	sort.Strings(problems)
+	return &LocalizationValidationError{Problems: problems}
+}
+
+func (l *LocalizationConfig) validateSettings() []string {
 	var problems []string
 	if len(l.Locales) == 0 {
 		problems = append(problems, "locales must contain at least one locale")
@@ -94,80 +112,96 @@ func (l *LocalizationConfig) Validate() error {
 	} else if l.MissingMessages != "error" && l.MissingMessages != "key" {
 		problems = append(problems, fmt.Sprintf("missing_messages must be \"error\" or \"key\", got %q", l.MissingMessages))
 	}
+	return problems
+}
 
-	keys := sortedLocaleKeys(l.Locales)
-	seenTags := make(map[string]string, len(keys))
+func validateLocale(key, defaultLanguage string, locale *Locale, seenTags map[string]string) []string {
+	locale.Key = key
+	locale.Default = key == defaultLanguage
+	problems := validateLocaleIdentity(key, locale, seenTags)
+	if strings.TrimSpace(locale.Label) == "" {
+		problems = append(problems, fmt.Sprintf("locales.%s.label: label is required", key))
+	}
+	if locale.Direction == "" {
+		locale.Direction = "ltr"
+	} else if locale.Direction != "ltr" && locale.Direction != "rtl" {
+		problems = append(problems, fmt.Sprintf("locales.%s.direction: must be \"ltr\" or \"rtl\", got %q", key, locale.Direction))
+	}
+	for _, variable := range sortedStringMapKeys(locale.Variables) {
+		if operationalLocaleVariable(variable) {
+			problems = append(problems, fmt.Sprintf("locales.%s.variables.%s: operational configuration cannot be overridden per locale", key, variable))
+		}
+	}
+	return problems
+}
+
+func validateLocaleIdentity(key string, locale *Locale, seenTags map[string]string) []string {
+	var problems []string
+	if !validLocaleKey(key) {
+		problems = append(problems, fmt.Sprintf("locales.%s: locale key must be a lowercase URL-safe slug", key))
+	}
+	if !validBCP47(locale.Tag) {
+		return append(problems, fmt.Sprintf("locales.%s.tag: %q is not a valid BCP 47 tag", key, locale.Tag))
+	}
+	canonicalTag := strings.ToLower(locale.Tag)
+	if other, exists := seenTags[canonicalTag]; exists {
+		return append(problems, fmt.Sprintf("locales.%s.tag: %q duplicates locales.%s.tag under case-insensitive comparison", key, locale.Tag, other))
+	}
+	seenTags[canonicalTag] = key
+	return problems
+}
+
+func (l *LocalizationConfig) validateFallbacks(keys []string) []string {
+	defaultExists := l.defaultLocaleExists()
+	var problems []string
 	for _, key := range keys {
 		locale := l.Locales[key]
-		locale.Key = key
-		locale.Default = key == l.DefaultLanguage
-		if !validLocaleKey(key) {
-			problems = append(problems, fmt.Sprintf("locales.%s: locale key must be a lowercase URL-safe slug", key))
+		valid, fallbackProblems := validateFallbacks(key, locale.Fallbacks, l.Locales)
+		problems = append(problems, fallbackProblems...)
+		if key != l.DefaultLanguage && defaultExists && !containsLocale(locale.Fallbacks, l.DefaultLanguage) {
+			valid = append(valid, l.DefaultLanguage)
 		}
-		if !validBCP47(locale.Tag) {
-			problems = append(problems, fmt.Sprintf("locales.%s.tag: %q is not a valid BCP 47 tag", key, locale.Tag))
-		} else {
-			canonicalTag := strings.ToLower(locale.Tag)
-			if other, exists := seenTags[canonicalTag]; exists {
-				problems = append(problems, fmt.Sprintf("locales.%s.tag: %q duplicates locales.%s.tag under case-insensitive comparison", key, locale.Tag, other))
-			} else {
-				seenTags[canonicalTag] = key
-			}
-		}
-		if strings.TrimSpace(locale.Label) == "" {
-			problems = append(problems, fmt.Sprintf("locales.%s.label: label is required", key))
-		}
-		if locale.Direction == "" {
-			locale.Direction = "ltr"
-		} else if locale.Direction != "ltr" && locale.Direction != "rtl" {
-			problems = append(problems, fmt.Sprintf("locales.%s.direction: must be \"ltr\" or \"rtl\", got %q", key, locale.Direction))
-		}
-		for _, variable := range sortedStringMapKeys(locale.Variables) {
-			if operationalLocaleVariable(variable) {
-				problems = append(problems, fmt.Sprintf("locales.%s.variables.%s: operational configuration cannot be overridden per locale", key, variable))
-			}
-		}
+		locale.Fallbacks = valid
 		l.Locales[key] = locale
 	}
+	return problems
+}
 
-	defaultExists := false
-	if _, ok := l.Locales[l.DefaultLanguage]; ok {
-		defaultExists = true
-	}
-	for _, key := range keys {
-		locale := l.Locales[key]
-		seenFallbacks := make(map[string]struct{}, len(locale.Fallbacks))
-		validFallbacks := make([]string, 0, len(locale.Fallbacks)+1)
-		for index, fallback := range locale.Fallbacks {
-			if _, duplicate := seenFallbacks[fallback]; duplicate {
-				problems = append(problems, fmt.Sprintf("locales.%s.fallbacks[%d]: duplicate fallback %q", key, index, fallback))
-				continue
-			}
-			seenFallbacks[fallback] = struct{}{}
-			if fallback == key {
-				problems = append(problems, fmt.Sprintf("locales.%s.fallbacks[%d]: locale cannot fall back to itself", key, index))
-				continue
-			}
-			if _, ok := l.Locales[fallback]; !ok {
-				problems = append(problems, fmt.Sprintf("locales.%s.fallbacks[%d]: unknown locale %q", key, index, fallback))
-				continue
-			}
-			validFallbacks = append(validFallbacks, fallback)
+func (l *LocalizationConfig) defaultLocaleExists() bool {
+	_, exists := l.Locales[l.DefaultLanguage]
+	return exists
+}
+
+func validateFallbacks(key string, fallbacks []string, locales map[string]Locale) ([]string, []string) {
+	seen := make(map[string]struct{}, len(fallbacks))
+	valid := make([]string, 0, len(fallbacks)+1)
+	var problems []string
+	for index, fallback := range fallbacks {
+		if _, duplicate := seen[fallback]; duplicate {
+			problems = append(problems, fmt.Sprintf("locales.%s.fallbacks[%d]: duplicate fallback %q", key, index, fallback))
+			continue
 		}
-		if key != l.DefaultLanguage && defaultExists {
-			if _, found := seenFallbacks[l.DefaultLanguage]; !found {
-				validFallbacks = append(validFallbacks, l.DefaultLanguage)
-			}
+		seen[fallback] = struct{}{}
+		if fallback == key {
+			problems = append(problems, fmt.Sprintf("locales.%s.fallbacks[%d]: locale cannot fall back to itself", key, index))
+			continue
 		}
-		locale.Fallbacks = validFallbacks
-		l.Locales[key] = locale
+		if _, exists := locales[fallback]; !exists {
+			problems = append(problems, fmt.Sprintf("locales.%s.fallbacks[%d]: unknown locale %q", key, index, fallback))
+			continue
+		}
+		valid = append(valid, fallback)
 	}
-	problems = append(problems, fallbackCycleProblems(l.Locales)...)
-	if len(problems) == 0 {
-		return nil
+	return valid, problems
+}
+
+func containsLocale(locales []string, key string) bool {
+	for _, locale := range locales {
+		if locale == key {
+			return true
+		}
 	}
-	sort.Strings(problems)
-	return &LocalizationValidationError{Problems: problems}
+	return false
 }
 
 // LocalizationValidationError reports all independent validation failures in
@@ -418,69 +452,112 @@ func fallbackCycleProblems(locales map[string]Locale) []string {
 }
 
 func validBCP47(tag string) bool {
-	if tag == "" || strings.Contains(tag, "_") {
-		return false
-	}
-	lower := strings.ToLower(tag)
-	if grandfatheredBCP47Tags[lower] {
+	if grandfatheredBCP47Tags[strings.ToLower(tag)] {
 		return true
 	}
-	parts := strings.Split(tag, "-")
-	for _, part := range parts {
-		if part == "" {
-			return false
-		}
+	parts, valid := bcp47Parts(tag)
+	if !valid {
+		return false
 	}
 	if strings.EqualFold(parts[0], "x") {
 		return validPrivateUse(parts[1:])
 	}
+	return validRegularBCP47(parts)
+}
 
-	index := 0
-	language := parts[index]
-	if !allLetters(language) || len(language) < 2 || len(language) > 8 {
+func bcp47Parts(tag string) ([]string, bool) {
+	if tag == "" || strings.Contains(tag, "_") {
+		return nil, false
+	}
+	parts := strings.Split(tag, "-")
+	for _, part := range parts {
+		if part == "" {
+			return nil, false
+		}
+	}
+	return parts, true
+}
+
+func validRegularBCP47(parts []string) bool {
+	index, valid := consumeLanguage(parts)
+	if !valid {
 		return false
 	}
-	index++
+	index = consumeScript(parts, index)
+	index = consumeRegion(parts, index)
+	index, valid = consumeVariants(parts, index)
+	if !valid {
+		return false
+	}
+	index, valid = consumeExtensions(parts, index)
+	if !valid {
+		return false
+	}
+	if index < len(parts) && strings.EqualFold(parts[index], "x") {
+		return validPrivateUse(parts[index+1:])
+	}
+	return index == len(parts)
+}
+
+func consumeLanguage(parts []string) (int, bool) {
+	language := parts[0]
+	if !allLetters(language) || len(language) < 2 || len(language) > 8 {
+		return 0, false
+	}
+	index := 1
 	if len(language) <= 3 {
 		for index < len(parts) && len(parts[index]) == 3 && allLetters(parts[index]) && index <= 3 {
 			index++
 		}
 	}
+	return index, true
+}
+
+func consumeScript(parts []string, index int) int {
 	if index < len(parts) && len(parts[index]) == 4 && allLetters(parts[index]) {
-		index++
+		return index + 1
 	}
+	return index
+}
+
+func consumeRegion(parts []string, index int) int {
 	if index < len(parts) && ((len(parts[index]) == 2 && allLetters(parts[index])) || (len(parts[index]) == 3 && allDigits(parts[index]))) {
-		index++
+		return index + 1
 	}
-	variants := make(map[string]struct{})
+	return index
+}
+
+func consumeVariants(parts []string, index int) (int, bool) {
+	seen := make(map[string]struct{})
 	for index < len(parts) && validVariant(parts[index]) {
 		variant := strings.ToLower(parts[index])
-		if _, found := variants[variant]; found {
-			return false
+		if _, found := seen[variant]; found {
+			return index, false
 		}
-		variants[variant] = struct{}{}
+		seen[variant] = struct{}{}
 		index++
 	}
-	singletons := make(map[string]struct{})
+	return index, true
+}
+
+func consumeExtensions(parts []string, index int) (int, bool) {
+	seen := make(map[string]struct{})
 	for index < len(parts) && validExtensionSingleton(parts[index]) {
 		singleton := strings.ToLower(parts[index])
-		if _, found := singletons[singleton]; found {
-			return false
+		if _, found := seen[singleton]; found {
+			return index, false
 		}
-		singletons[singleton] = struct{}{}
+		seen[singleton] = struct{}{}
 		index++
 		start := index
 		for index < len(parts) && len(parts[index]) >= 2 && len(parts[index]) <= 8 && allAlphaNumeric(parts[index]) {
 			index++
 		}
 		if start == index {
-			return false
+			return index, false
 		}
 	}
-	if index < len(parts) && strings.EqualFold(parts[index], "x") {
-		return validPrivateUse(parts[index+1:])
-	}
-	return index == len(parts)
+	return index, true
 }
 
 func validPrivateUse(parts []string) bool {
@@ -524,7 +601,9 @@ func allDigits(value string) bool {
 
 func allAlphaNumeric(value string) bool {
 	for _, char := range value {
-		if !(char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z' || char >= '0' && char <= '9') {
+		if (char < 'a' || char > 'z') &&
+			(char < 'A' || char > 'Z') &&
+			(char < '0' || char > '9') {
 			return false
 		}
 	}

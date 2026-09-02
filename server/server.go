@@ -143,7 +143,6 @@ func (s *Server) routes() http.Handler {
 	})
 }
 
-
 func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 	s.m.RLock()
 	project := s.project

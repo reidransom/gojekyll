@@ -21,13 +21,13 @@ type Site struct {
 	Collections []*collection.Collection
 	Routes      map[string]Document // URL path -> Document; only for output pages
 
-	cfg          config.Config
-	data         map[string]interface{} // from _data files
-	flags        config.Flags           // command-line flags, override config files
+	cfg             config.Config
+	data            map[string]interface{} // from _data files
+	flags           config.Flags           // command-line flags, override config files
 	plugins         []string               // initially cfg.Plugins, but plugins can modify this
 	pluginInstances map[string]plugins.Plugin
-	themeDir     string                 // absolute path to theme directory
-	remoteThemes *remoteThemeResolver
+	themeDir        string // absolute path to theme directory
+	remoteThemes    *remoteThemeResolver
 
 	docs               []Document // all documents, whether or not they are output
 	nonCollectionPages []Page
@@ -41,13 +41,13 @@ type Site struct {
 	// Localization state is set only on a prepared locale site. It stays
 	// private to the site lifecycle so ordinary sites retain their existing
 	// configuration and document behavior.
-	localeKey        string
-	localePrefix     string
-	includeStatic    bool
-	localizedSources map[string]struct{}
+	localeKey           string
+	localePrefix        string
+	includeStatic       bool
+	localizedSources    map[string]struct{}
 	localizationContext *localizedSiteContext
-	removedRoutes    map[string]struct{}
-	outputCandidates []Document
+	removedRoutes       map[string]struct{}
+	outputCandidates    []Document
 
 	// Build diagnostics
 	diag BuildDiagnostics

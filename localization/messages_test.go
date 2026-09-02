@@ -64,9 +64,9 @@ func TestMessageCatalogReturnsKeyWhenConfigured(t *testing.T) {
 
 func TestDiscoverDataRejectsInvalidFallbackConfigurationBeforeMessages(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name   string
 		config string
-		want string
+		want   string
 	}{
 		{
 			name: "unknown fallback",

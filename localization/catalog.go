@@ -79,7 +79,6 @@ func BuildCatalog(registry *config.LocalizationConfig, documents []Document) (*C
 		return nil, err
 	}
 
-
 	documents = append([]Document(nil), documents...)
 	sort.SliceStable(documents, func(i, j int) bool {
 		return documentSortKey(documents[i]) < documentSortKey(documents[j])

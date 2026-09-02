@@ -15,14 +15,14 @@ import (
 // See https://jekyllrb.com/docs/configuration/#default-configuration
 type Config struct {
 	// Where things are:
-	Source      string
-	Destination string
-	LayoutsDir  string                            `yaml:"layouts_dir"`
-	DataDir     string                            `yaml:"data_dir"`
-	IncludesDir string                            `yaml:"includes_dir"`
-	Collections map[string]map[string]interface{} `yaml:"-"`
-	Theme       string
-	RemoteTheme string `yaml:"remote_theme"`
+	Source       string
+	Destination  string
+	LayoutsDir   string                            `yaml:"layouts_dir"`
+	DataDir      string                            `yaml:"data_dir"`
+	IncludesDir  string                            `yaml:"includes_dir"`
+	Collections  map[string]map[string]interface{} `yaml:"-"`
+	Theme        string
+	RemoteTheme  string              `yaml:"remote_theme"`
 	Localization *LocalizationConfig `yaml:"localization"`
 
 	// Handling Reading

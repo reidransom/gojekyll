@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
 	"github.com/reidransom/jigyll/config"
 	"github.com/reidransom/liquid"
 	liquidtags "github.com/reidransom/liquid/tags"
