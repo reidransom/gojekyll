@@ -122,7 +122,7 @@ func BuildCatalog(registry *config.LocalizationConfig, documents []Document) (*C
 	}
 
 	catalog.inputs = make([]PreparedInput, 0, len(registry.Locales))
-	for _, locale := range registry.OrderedLocales() {
+	for _, locale := range catalogLocales(registry) {
 		input := PreparedInput{Locale: locale, Documents: append([]Edition(nil), byLocale[locale.Key]...)}
 		sort.Slice(input.Documents, func(i, j int) bool {
 			return documentSortKey(input.Documents[i].Document) < documentSortKey(input.Documents[j].Document)
@@ -132,8 +132,8 @@ func BuildCatalog(registry *config.LocalizationConfig, documents []Document) (*C
 	return catalog, nil
 }
 
-// Editions returns the published sibling editions for identity in configured
-// locale order. The returned slice is independent from the catalog.
+// Editions returns the published sibling editions in catalog locale order. The
+// returned slice is independent from the catalog.
 func (c *Catalog) Editions(identity Identity) []Edition {
 	if c == nil {
 		return nil
@@ -162,6 +162,18 @@ func (c *Catalog) PreparedInputs() []PreparedInput {
 		out[i] = PreparedInput{Locale: input.Locale, Documents: append([]Edition(nil), input.Documents...)}
 	}
 	return out
+}
+
+// catalogLocales orders locales for build inputs. Locales without an explicit
+// weight sort before weighted locales; within each group, the configured
+// presentation order is retained. This keeps unweighted locale inputs stable
+// without assigning them an implied presentation weight.
+func catalogLocales(registry *config.LocalizationConfig) []config.Locale {
+	locales := registry.OrderedLocales()
+	sort.SliceStable(locales, func(i, j int) bool {
+		return locales[i].Weight == nil && locales[j].Weight != nil
+	})
+	return locales
 }
 
 func assignDocument(registry *config.LocalizationConfig, document Document) (config.Locale, string, []string) {

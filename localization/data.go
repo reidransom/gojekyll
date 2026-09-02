@@ -25,7 +25,8 @@ type DataCatalog struct {
 	missingMode    string
 }
 
-// DiscoverData reads a project's data directory. The locales directory is
+// DiscoverData reads a project's data directory. A top-level shared data file
+// contributes its mapping directly to common data. The locales directory is
 // reserved for locale overlays and is never included in shared data.
 func DiscoverData(dir string, locales *config.LocalizationConfig) (*DataCatalog, error) {
 	if locales == nil {
@@ -155,6 +156,25 @@ func discoverData(dir string, locales *config.LocalizationConfig) (map[string]in
 			}
 			continue
 		}
+		if dataExtension(filepath.Ext(entry.Name())) && strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) == "shared" {
+			if prior, exists := claims["shared"]; exists {
+				problems = append(problems, fmt.Sprintf("data key %q is defined by both %q and %q", "shared", prior, entry.Name()))
+				continue
+			}
+			claims["shared"] = entry.Name()
+			value, err := readDataFile(path)
+			if err != nil {
+				problems = append(problems, fmt.Sprintf("reading data file %q: %v", entry.Name(), err))
+				continue
+			}
+			values, ok := value.(map[string]interface{})
+			if !ok {
+				problems = append(problems, fmt.Sprintf("shared data file %q must contain a mapping", entry.Name()))
+				continue
+			}
+			shared = mergeMaps(shared, values)
+			continue
+		}
 		readDataEntry(path, entry, entry.Name(), shared, claims, &problems)
 	}
 
@@ -186,13 +206,57 @@ func discoverLocaleOverlays(dir string, locales *config.LocalizationConfig, over
 			*problems = append(*problems, fmt.Sprintf("locale data %q names an unknown locale", display))
 			continue
 		}
-		data, err := readDataTree(path, display)
+		data, err := readLocaleOverlay(path, display)
 		if err != nil {
 			appendDataTreeError(problems, err)
 			continue
 		}
 		overlays[entry.Name()] = data
 	}
+}
+
+// readLocaleOverlay merges each top-level data-file mapping into one locale
+// overlay. Nested directories remain named data trees.
+func readLocaleOverlay(dir, display string) (map[string]interface{}, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading data directory %q: %w", display, err)
+	}
+
+	overlay := make(map[string]interface{})
+	var problems []string
+	for _, entry := range entries {
+		path := filepath.Join(dir, entry.Name())
+		entryDisplay := filepath.Join(display, entry.Name())
+		if entry.IsDir() {
+			value, err := readDataTree(path, entryDisplay)
+			if err != nil {
+				appendDataTreeError(&problems, err)
+				continue
+			}
+			overlay[entry.Name()] = value
+			continue
+		}
+		if !dataExtension(filepath.Ext(entry.Name())) {
+			continue
+		}
+		value, err := readDataFile(path)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("reading data file %q: %v", entryDisplay, err))
+			continue
+		}
+		values, ok := value.(map[string]interface{})
+		if !ok {
+			problems = append(problems, fmt.Sprintf("locale data file %q must contain a mapping", entryDisplay))
+			continue
+		}
+		overlay = mergeMaps(overlay, values)
+	}
+	if len(problems) != 0 {
+		sort.Strings(problems)
+		return nil, &DataValidationError{Problems: problems}
+	}
+	return overlay, nil
 }
 
 func readDataEntry(path string, entry os.DirEntry, display string, data map[string]interface{}, claims map[string]string, problems *[]string) {
