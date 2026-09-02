@@ -172,9 +172,9 @@ localization:
 		errors = append(errors, err.Error())
 	}
 	require.Equal(t, errors[0], errors[1])
-	require.ErrorContains(t, errors[0], `locales.de.fallbacks[1]: duplicate fallback "fr"`)
-	require.ErrorContains(t, errors[0], `locales.de.fallbacks[2]: unknown locale "xx"`)
-	require.ErrorContains(t, errors[0], "fallback cycle: de -> fr -> de")
+	require.Contains(t, errors[0], `locales.de.fallbacks[1]: duplicate fallback "fr"`)
+	require.Contains(t, errors[0], `locales.de.fallbacks[2]: unknown locale "xx"`)
+	require.Contains(t, errors[0], "fallback cycle: de -> fr -> de")
 }
 
 func TestConfigDeriveLocaleDeeplySeparatesMutableConfiguration(t *testing.T) {

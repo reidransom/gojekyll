@@ -9,7 +9,7 @@ import (
 
 	"github.com/reidransom/jigyll/config"
 	"github.com/reidransom/liquid"
-	"github.com/reidransom/liquid/tags"
+	liquidtags "github.com/reidransom/liquid/tags"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +17,7 @@ func TestStaticFile_ToLiquid(t *testing.T) {
 	site := siteFake{t, config.Default()}
 	page, err := NewFile(site, "testdata/static.html", "static.html", func(bool) FrontMatter { return FrontMatter{} })
 	require.NoError(t, err)
-	drop := page.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap)
+	drop := page.(liquid.Drop).ToLiquid().(liquidtags.IterationKeyedMap)
 
 	require.Equal(t, "static", drop["basename"])
 	require.Equal(t, "static.html", drop["name"])
@@ -32,7 +32,7 @@ func TestStaticFile_ToLiquid_defaults(t *testing.T) {
 		return FrontMatter{"sitemap": false, "image": true, "path": "should-be-shadowed", "name": "should-be-shadowed"}
 	})
 	require.NoError(t, err)
-	drop := page.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap)
+	drop := page.(liquid.Drop).ToLiquid().(liquidtags.IterationKeyedMap)
 
 	// Default front matter surfaces through the drop.
 	require.Equal(t, false, drop["sitemap"])
@@ -49,14 +49,14 @@ func TestPage_ToLiquid_excerpt(t *testing.T) {
 
 	t.Run("before render", func(t *testing.T) {
 		drop := p.(liquid.Drop).ToLiquid()
-		excerpt := drop.(tags.IterationKeyedMap)["excerpt"]
+		excerpt := drop.(liquidtags.IterationKeyedMap)["excerpt"]
 		require.Equal(t, "First line.", fmt.Sprintf("%s", excerpt))
 	})
 
 	t.Run("after render", func(t *testing.T) {
 		require.NoError(t, p.(renderer).Render())
 		drop := p.(liquid.Drop).ToLiquid()
-		excerpt := drop.(tags.IterationKeyedMap)["excerpt"]
+		excerpt := drop.(liquidtags.IterationKeyedMap)["excerpt"]
 		require.Equal(t, "rendered: First line.", fmt.Sprintf("%s", excerpt))
 	})
 }
@@ -66,7 +66,7 @@ func TestPage_ToLiquid_name(t *testing.T) {
 	p, err := NewFile(site, "testdata/excerpt.md", "excerpt.md", func(bool) FrontMatter { return FrontMatter{} })
 	require.NoError(t, err)
 
-	drop := p.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap)
+	drop := p.(liquid.Drop).ToLiquid().(liquidtags.IterationKeyedMap)
 	require.Equal(t, "excerpt.md", drop["name"])
 	require.Equal(t, "testdata/excerpt.md", drop["path"])
 }
@@ -109,7 +109,7 @@ func TestPage_ToLiquid_postDate(t *testing.T) {
 	})
 }
 
-func newPageDrop(t *testing.T, contents, relPath string, defaults FrontMatter, modified time.Time) (tags.IterationKeyedMap, time.Time) {
+func newPageDrop(t *testing.T, contents, relPath string, defaults FrontMatter, modified time.Time) (liquidtags.IterationKeyedMap, time.Time) {
 	t.Helper()
 
 	filename := filepath.Join(t.TempDir(), relPath)
@@ -122,7 +122,7 @@ func newPageDrop(t *testing.T, contents, relPath string, defaults FrontMatter, m
 		return defaults
 	})
 	require.NoError(t, err)
-	return document.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap), info.ModTime()
+	return document.(liquid.Drop).ToLiquid().(liquidtags.IterationKeyedMap), info.ModTime()
 }
 
 type renderer interface {

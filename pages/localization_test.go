@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 	"github.com/reidransom/jigyll/config"
-	"github.com/reidransom/jigyll/tags"
 	"github.com/reidransom/liquid"
+	liquidtags "github.com/reidransom/liquid/tags"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,7 +57,7 @@ func TestLocalizedPageDrop(t *testing.T) {
 
 func TestOrdinaryPageDropOmitsLocalizationFields(t *testing.T) {
 	page := localizedPage(t, siteFake{t: t, cfg: config.Default()}, "about.md", "---\n---\nAbout")
-	drop := page.(liquid.Drop).ToLiquid().(tags.IterationKeyedMap)
+	drop := page.(liquid.Drop).ToLiquid().(liquidtags.IterationKeyedMap)
 	_, hasLanguage := drop["language"]
 	_, hasTranslations := drop["translations"]
 	require.False(t, hasLanguage)

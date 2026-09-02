@@ -16,6 +16,7 @@ import (
 	"github.com/reidransom/jigyll/plugins"
 	"github.com/reidransom/jigyll/utils"
 	"github.com/reidransom/liquid"
+	liquidtags "github.com/reidransom/liquid/tags"
 )
 
 // LocalizedBuild enters the project-level production seam for an opt-in
@@ -260,7 +261,7 @@ func sitemapEligible(site *Site, document Document) bool {
 		if path.Base(document.URL()) == "404.html" || site.cfg.IsConfigPath(strings.TrimPrefix(document.URL(), "/")) {
 			return false
 		}
-		drop, ok := liquid.FromDrop(document).(liquid.IterationKeyedMap)
+		drop, ok := liquid.FromDrop(document).(liquidtags.IterationKeyedMap)
 		return !ok || drop["sitemap"] != false
 	}
 
@@ -280,7 +281,7 @@ func sitemapAbsoluteURL(site *Site, route string) string {
 
 func sitemapLastModified(document Document) string {
 	if document.IsStatic() {
-		if drop, ok := liquid.FromDrop(document).(liquid.IterationKeyedMap); ok {
+		if drop, ok := liquid.FromDrop(document).(liquidtags.IterationKeyedMap); ok {
 			if modified, ok := drop["modified_time"].(time.Time); ok {
 				return modified.Format("2006-01-02T15:04:05-07:00")
 			}

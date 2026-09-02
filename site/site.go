@@ -29,8 +29,7 @@ type Site struct {
 	themeDir     string                 // absolute path to theme directory
 	remoteThemes *remoteThemeResolver
 
-	outputCandidates []Document // all registered output documents, before collision resolution
-	removedRoutes    map[string]struct{}
+	docs               []Document // all documents, whether or not they are output
 	nonCollectionPages []Page
 
 	renderer   *renderers.Manager
@@ -209,6 +208,11 @@ func (s *Site) RendererManager() renderers.Renderers {
 		panic("uninitialized rendering manager")
 	}
 	return s.renderer
+}
+
+// TemplateEngine is part of the plugins.Site interface.
+func (s *Site) TemplateEngine() *liquid.Engine {
+	return s.renderer.TemplateEngine()
 }
 
 // initializeRenderers initializes the rendering manager
