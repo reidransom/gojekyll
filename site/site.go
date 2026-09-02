@@ -37,6 +37,15 @@ type Site struct {
 	drop     map[string]interface{} // cached drop value
 	dropOnce sync.Once
 
+	// Localization state is set only on a prepared locale site. It stays
+	// private to the site lifecycle so ordinary sites retain their existing
+	// configuration and document behavior.
+	localeKey        string
+	localePrefix     string
+	includeStatic    bool
+	localizedSources map[string]struct{}
+	localizationContext *localizedSiteContext
+
 	// Build diagnostics
 	diag BuildDiagnostics
 }
@@ -131,7 +140,7 @@ func (s *Site) Site() interface{} {
 }
 
 // PathPrefix is in the page.Container interface.
-func (s *Site) PathPrefix() string { return "" }
+func (s *Site) PathPrefix() string { return s.localePrefix }
 
 // New creates a new site record, initialized with the site defaults.
 func New(flags config.Flags) *Site {
@@ -195,16 +204,12 @@ func (s *Site) RendererManager() renderers.Renderers {
 	return s.renderer
 }
 
-// TemplateEngine is part of the plugins.Site interface.
-func (s *Site) TemplateEngine() *liquid.Engine {
-	return s.renderer.TemplateEngine()
-}
-
 // initializeRenderers initializes the rendering manager
 func (s *Site) initializeRenderers() (err error) {
 	options := renderers.Options{
 		RelativeFilenameToURL: s.FilenameURLPath,
 		ThemeDir:              s.themeDir,
+		Localization:          s.localizationContext,
 	}
 	s.renderer, err = renderers.New(s.cfg, options)
 	if err != nil {

@@ -22,7 +22,15 @@ func buildCommand(site *site.Site) error {
 
 	logger.path("Destination:", site.DestDir())
 	logger.label("Generating...", "")
-	count, err := site.Write()
+	var (
+		count int
+		err   error
+	)
+	if site.Config().Enabled() {
+		count, err = site.LocalizedBuild(site)
+	} else {
+		count, err = site.Write()
+	}
 	switch {
 	case err == nil:
 		elapsed := time.Since(commandStartTime)
@@ -38,8 +46,13 @@ func buildCommand(site *site.Site) error {
 		return err
 	}
 
-	// FIXME the watch will miss files that changed during the first build
+	// A localized watcher must rebuild one project generation. The existing
+	// site watcher is intentionally single-site, so do not start it here.
+	if watch && site.Config().Enabled() {
+		return fmt.Errorf("localized watch is not supported by the single-site watcher")
+	}
 
+	// FIXME the watch will miss files that changed during the first build
 	// server watch is implemented inside Server.Run, in contrast to this command
 	if watch {
 		events, err := site.WatchRebuild()

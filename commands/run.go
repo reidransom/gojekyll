@@ -92,6 +92,9 @@ func loadSite(source string, flags config.Flags) (*site.Site, error) {
 		logger.label(configurationFileLabel, "none")
 	}
 	logger.path("Source:", site.SourceDir())
+	if site.Config().Enabled() {
+		return site, nil
+	}
 	err = site.Read()
 	return site, err
 }

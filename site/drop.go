@@ -36,6 +36,16 @@ func (s *Site) initializeDrop() error {
 		// TODO read time from _config, if it's available
 		"time": time.Now(),
 	})
+	if context := s.localizationContext; context != nil {
+		languages := make([]map[string]interface{}, 0, len(context.registry.Locales))
+		for _, locale := range context.registry.OrderedLocales() {
+			languages = append(languages, localeLiquidValue(locale))
+		}
+		defaultLanguage, _ := context.registry.Locale(context.registry.DefaultLanguage)
+		drop["language"] = localeLiquidValue(context.locale)
+		drop["languages"] = languages
+		drop["default_language"] = localeLiquidValue(defaultLanguage)
+	}
 	for _, c := range s.Collections {
 		drop[c.Name] = c.Pages()
 	}

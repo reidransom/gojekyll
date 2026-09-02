@@ -33,8 +33,10 @@ func (s *Site) Read() error {
 	if err := s.findTheme(); err != nil {
 		return utils.WrapError(err, "finding theme")
 	}
-	if err := s.readDataFiles(); err != nil {
-		return utils.WrapError(err, "reading data files")
+	if s.data == nil {
+		if err := s.readDataFiles(); err != nil {
+			return utils.WrapError(err, "reading data files")
+		}
 	}
 	if err := s.readThemeAssets(); err != nil {
 		return utils.WrapError(err, "reading theme assets")
@@ -124,6 +126,12 @@ func (s *Site) readFiles(dir, base string) error {
 		if err != nil {
 			return utils.WrapPathError(err, filename)
 		}
+		if d.IsStatic() && s.localeKey != "" && !s.includeStatic {
+			return nil
+		}
+		if p, ok := d.(Page); ok && !s.IncludesPage(p) {
+			return nil
+		}
 		if d.IsStatic() {
 			s.diag.FilesStaticNoFM++
 			if s.cfg.Verbose {
@@ -142,6 +150,35 @@ func (s *Site) readFiles(dir, base string) error {
 		}
 		return nil
 	})
+}
+
+// IncludesPage reports whether a page belongs to this prepared locale site.
+// It is deliberately available to collection construction so sorting and post
+// navigation are computed after locale filtering.
+func (s *Site) IncludesPage(page Page) bool {
+	if s.localeKey == "" {
+		return true
+	}
+	if s.localizedSources != nil {
+		_, included := s.localizedSources[page.Source()]
+		return included
+	}
+	return s.includesLocale(page.FrontMatter())
+}
+
+// includesLocale reports whether effective front matter belongs in this site.
+// An empty language remains ordinary-site behavior unless the site is prepared
+// for localization, where it belongs to the configured default locale.
+func (s *Site) includesLocale(fm pages.FrontMatter) bool {
+	if s.localeKey == "" {
+		return true
+	}
+	lang, found := fm["lang"]
+	if !found {
+		return s.localeKey == s.cfg.Localization.DefaultLanguage
+	}
+	key, ok := lang.(string)
+	return ok && key == s.localeKey
 }
 
 // registerDocument adds a document to the site's fields and reports whether
