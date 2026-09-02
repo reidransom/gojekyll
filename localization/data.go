@@ -215,11 +215,48 @@ func discoverLocaleOverlays(dir string, locales *config.LocalizationConfig, over
 	}
 }
 
-// readLocaleOverlay reads locale data using the same filename-keyed tree as
-// ordinary data. In particular, locales/de/settings.yml overlays
-// site.data.settings, while locales/de/messages.yml is the message module.
+// readLocaleOverlay merges each top-level data-file mapping into one locale
+// overlay. Nested directories remain named data trees.
 func readLocaleOverlay(dir, display string) (map[string]interface{}, error) {
-	return readDataTree(dir, display)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading data directory %q: %w", display, err)
+	}
+
+	overlay := make(map[string]interface{})
+	var problems []string
+	for _, entry := range entries {
+		path := filepath.Join(dir, entry.Name())
+		entryDisplay := filepath.Join(display, entry.Name())
+		if entry.IsDir() {
+			value, err := readDataTree(path, entryDisplay)
+			if err != nil {
+				appendDataTreeError(&problems, err)
+				continue
+			}
+			overlay[entry.Name()] = value
+			continue
+		}
+		if !dataExtension(filepath.Ext(entry.Name())) {
+			continue
+		}
+		value, err := readDataFile(path)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("reading data file %q: %v", entryDisplay, err))
+			continue
+		}
+		values, ok := value.(map[string]interface{})
+		if !ok {
+			problems = append(problems, fmt.Sprintf("locale data file %q must contain a mapping", entryDisplay))
+			continue
+		}
+		overlay = mergeMaps(overlay, values)
+	}
+	if len(problems) != 0 {
+		sort.Strings(problems)
+		return nil, &DataValidationError{Problems: problems}
+	}
+	return overlay, nil
 }
 
 func readDataEntry(path string, entry os.DirEntry, display string, data map[string]interface{}, claims map[string]string, problems *[]string) {
