@@ -87,33 +87,44 @@ func BuildCatalog(registry *config.LocalizationConfig, documents []Document) (*C
 	catalog := &Catalog{editions: make(map[Identity]map[string]Edition)}
 	byLocale := make(map[string][]Edition, len(registry.Locales))
 	problems := make([]string, 0)
-	for _, document := range documents {
+	exemptions := make(map[int]map[string]struct{})
+	activePolicy := len(registry.RequiredTranslations) != 0
+	for index, document := range documents {
 		if document.Static || !document.Included {
 			continue
 		}
 
-		locale, key, errs := assignDocument(registry, document)
-		if len(errs) != 0 {
+		assignment := assignDocument(registry, document)
+		problems = append(problems, assignment.problems...)
+		if activePolicy {
+			valid, errs := validateExemptions(registry, document, assignment)
+			exemptions[index] = valid
 			problems = append(problems, errs...)
-			continue
 		}
-		edition := Edition{Document: document, Locale: locale, TranslationKey: key}
-		byLocale[locale.Key] = append(byLocale[locale.Key], edition)
-		if key == "" {
+		if len(assignment.problems) != 0 {
 			continue
 		}
 
-		identity := Identity{Namespace: document.Namespace, TranslationKey: key}
+		edition := Edition{Document: document, Locale: assignment.locale, TranslationKey: assignment.translationKey}
+		byLocale[assignment.locale.Key] = append(byLocale[assignment.locale.Key], edition)
+		if assignment.translationKey == "" {
+			continue
+		}
+
+		identity := Identity{Namespace: document.Namespace, TranslationKey: assignment.translationKey}
 		set := catalog.editions[identity]
 		if set == nil {
 			set = make(map[string]Edition)
 			catalog.editions[identity] = set
 		}
-		if existing, found := set[locale.Key]; found {
-			problems = append(problems, fmt.Sprintf("%s: namespace %q translation_key %q locale %q has duplicate included editions: %s and %s", documentSource(existing.Document), identity.Namespace, identity.TranslationKey, locale.Key, documentSource(existing.Document), documentSource(document)))
+		if existing, found := set[assignment.locale.Key]; found {
+			problems = append(problems, fmt.Sprintf("%s: namespace %q translation_key %q locale %q has duplicate included editions: %s and %s", documentSource(existing.Document), identity.Namespace, identity.TranslationKey, assignment.locale.Key, documentSource(existing.Document), documentSource(document)))
 			continue
 		}
-		set[locale.Key] = edition
+		set[assignment.locale.Key] = edition
+	}
+	if activePolicy {
+		problems = append(problems, requiredTranslationProblems(registry, catalog.editions, documents, exemptions)...)
 	}
 	if len(problems) != 0 {
 		sort.Strings(problems)
@@ -175,40 +186,166 @@ func catalogLocales(registry *config.LocalizationConfig) []config.Locale {
 	return locales
 }
 
-func assignDocument(registry *config.LocalizationConfig, document Document) (config.Locale, string, []string) {
+type documentAssignment struct {
+	locale         config.Locale
+	translationKey string
+	validLocale    bool
+	problems       []string
+}
+
+func assignDocument(registry *config.LocalizationConfig, document Document) documentAssignment {
 	source := documentSource(document)
-	problems := make([]string, 0, 3)
+	assignment := documentAssignment{}
 	if document.Namespace == "" {
-		problems = append(problems, fmt.Sprintf("%s: document namespace is required", source))
+		assignment.problems = append(assignment.problems, fmt.Sprintf("%s: document namespace is required", source))
 	}
 
 	language := registry.DefaultLanguage
+	langIsString := true
 	if raw, found := document.FrontMatter["lang"]; found {
 		value, ok := raw.(string)
 		if !ok {
-			problems = append(problems, fmt.Sprintf("%s: lang must be a string", source))
+			assignment.problems = append(assignment.problems, fmt.Sprintf("%s: lang must be a string", source))
+			langIsString = false
 		} else {
 			language = value
 		}
 	}
 	locale, found := registry.Locale(language)
 	if !found {
-		problems = append(problems, fmt.Sprintf("%s: lang %q does not name a configured locale", source, language))
+		assignment.problems = append(assignment.problems, fmt.Sprintf("%s: lang %q does not name a configured locale", source, language))
+	} else if langIsString {
+		assignment.locale = locale
+		assignment.validLocale = true
 	}
 
-	translationKey := ""
 	if raw, found := document.FrontMatter["translation_key"]; found {
 		value, ok := raw.(string)
 		switch {
 		case !ok:
-			problems = append(problems, fmt.Sprintf("%s: translation_key must be a non-empty string", source))
+			assignment.problems = append(assignment.problems, fmt.Sprintf("%s: translation_key must be a non-empty string", source))
 		case strings.TrimSpace(value) == "":
-			problems = append(problems, fmt.Sprintf("%s: translation_key must be a non-empty string", source))
+			assignment.problems = append(assignment.problems, fmt.Sprintf("%s: translation_key must be a non-empty string", source))
 		default:
-			translationKey = value
+			assignment.translationKey = value
 		}
 	}
-	return locale, translationKey, problems
+	return assignment
+}
+
+func validateExemptions(registry *config.LocalizationConfig, document Document, assignment documentAssignment) (map[string]struct{}, []string) {
+	raw, found := document.FrontMatter["translation_exempt"]
+	if !found {
+		return nil, nil
+	}
+
+	var values []interface{}
+	switch value := raw.(type) {
+	case []interface{}:
+		values = value
+	case []string:
+		values = make([]interface{}, len(value))
+		for index, locale := range value {
+			values[index] = locale
+		}
+	default:
+		return nil, []string{fmt.Sprintf("%s: translation_exempt must be a sequence of locale-key strings", documentSource(document))}
+	}
+
+	wrongOwner := assignment.validLocale && assignment.locale.Key != registry.DefaultLanguage
+	problems := make([]string, 0)
+	if wrongOwner {
+		problems = append(problems, fmt.Sprintf("%s: translation_exempt is only allowed on default locale %q editions", documentSource(document), registry.DefaultLanguage))
+	}
+	valid := make(map[string]struct{})
+	counts := make(map[string]int, len(values))
+	for _, rawLocale := range values {
+		if locale, ok := rawLocale.(string); ok {
+			counts[locale]++
+		}
+	}
+	seen := make(map[string]struct{}, len(counts))
+	for index, rawLocale := range values {
+		locale, ok := rawLocale.(string)
+		if !ok {
+			problems = append(problems, fmt.Sprintf("%s: translation_exempt[%d] must be a locale-key string", documentSource(document), index))
+			continue
+		}
+		if _, duplicate := seen[locale]; duplicate {
+			problems = append(problems, fmt.Sprintf("%s: translation_exempt[%d]: duplicate locale %q", documentSource(document), index, locale))
+			continue
+		}
+		seen[locale] = struct{}{}
+		if _, exists := registry.Locale(locale); !exists {
+			problems = append(problems, fmt.Sprintf("%s: translation_exempt[%d]: unknown locale %q", documentSource(document), index, locale))
+			continue
+		}
+		if !isRequiredLocale(registry.RequiredTranslations, locale) {
+			problems = append(problems, fmt.Sprintf("%s: translation_exempt[%d]: locale %q is not required", documentSource(document), index, locale))
+			continue
+		}
+		if counts[locale] > 1 || !assignment.validLocale || wrongOwner {
+			continue
+		}
+		valid[locale] = struct{}{}
+	}
+	return valid, problems
+}
+
+func requiredTranslationProblems(registry *config.LocalizationConfig, editions map[Identity]map[string]Edition, documents []Document, exemptions map[int]map[string]struct{}) []string {
+	problems := make([]string, 0)
+	reportedMissing := make(map[Identity]map[string]struct{})
+	for index, document := range documents {
+		if document.Static || !document.Included {
+			continue
+		}
+		assignment := assignDocument(registry, document)
+		if len(assignment.problems) != 0 || assignment.locale.Key != registry.DefaultLanguage {
+			continue
+		}
+		exempt := exemptions[index]
+		if assignment.translationKey == "" {
+			for _, locale := range registry.RequiredTranslations {
+				if _, covered := exempt[locale]; !covered {
+					problems = append(problems, fmt.Sprintf("%s: default-locale document requires a translation_key or translation_exempt covering required locale %q", documentSource(document), locale))
+				}
+			}
+			continue
+		}
+
+		identity := Identity{Namespace: document.Namespace, TranslationKey: assignment.translationKey}
+		set := editions[identity]
+		for _, locale := range registry.RequiredTranslations {
+			if _, exempted := exempt[locale]; exempted {
+				if _, found := set[locale]; found {
+					problems = append(problems, fmt.Sprintf("%s: translation_exempt for required locale %q is redundant because namespace %q translation_key %q has an included edition", documentSource(document), locale, identity.Namespace, identity.TranslationKey))
+				}
+				continue
+			}
+			if _, found := set[locale]; !found {
+				reported := reportedMissing[identity]
+				if reported == nil {
+					reported = make(map[string]struct{})
+					reportedMissing[identity] = reported
+				}
+				if _, alreadyReported := reported[locale]; alreadyReported {
+					continue
+				}
+				reported[locale] = struct{}{}
+				problems = append(problems, fmt.Sprintf("namespace %q translation_key %q is missing required locale %q", identity.Namespace, identity.TranslationKey, locale))
+			}
+		}
+	}
+	return problems
+}
+
+func isRequiredLocale(required []string, locale string) bool {
+	for _, candidate := range required {
+		if candidate == locale {
+			return true
+		}
+	}
+	return false
 }
 
 func documentSortKey(document Document) string {
