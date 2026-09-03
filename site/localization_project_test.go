@@ -219,7 +219,9 @@ func requireLocalizedGeneration(t *testing.T, project *LocalizedProject, generat
 	t.Helper()
 	_, document, found := project.URLPage("/guide/")
 	require.True(t, found)
-	require.Equal(t, generation, document.FrontMatter().String("generation", ""))
+	page, ok := document.(Page)
+	require.True(t, ok)
+	require.Equal(t, generation, page.FrontMatter().String("generation", ""))
 }
 
 func readLocalizedProjectOutput(t *testing.T, filename string) []byte {

@@ -271,6 +271,7 @@ localization:
         title: Deutsch
         custom:
           items: [de]
+    fr: {tag: fr, label: Français}
 `), &c))
 
 	de, err := c.DeriveLocale("de")
