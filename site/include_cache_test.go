@@ -39,7 +39,7 @@ plugins:
 func TestIncludeSiteBuildPreservesConcurrentLayoutBindings(t *testing.T) {
 	sourceDir := t.TempDir()
 	writeIncludeCacheSiteFile(t, sourceDir, "_config.yml", "destination: _site\n")
-	writeIncludeCacheSiteFile(t, sourceDir, "_data/navigation.yml", "label: catalogue\n")
+	writeIncludeCacheSiteFile(t, sourceDir, "_data/navigation.yml", "label: catalog\n")
 	writeIncludeCacheSiteFile(t, sourceDir, "_layouts/default.html", `[{% include navigation.html label=page.nav_label %}]{{ content }}`)
 	writeIncludeCacheSiteFile(t, sourceDir, "_includes/navigation.html", `page={{ page.title }};locale={{ page.locale }};site={{ site.data.navigation.label }};argument={{ include.label }}`)
 
@@ -61,7 +61,7 @@ func TestIncludeSiteBuildPreservesConcurrentLayoutBindings(t *testing.T) {
 	s := buildIncludeCacheSite(t, sourceDir, config.Flags{})
 	for _, page := range pages {
 		output := readIncludeCacheSiteOutput(t, sourceDir, page.filename[:len(page.filename)-3], "index.html")
-		require.Contains(t, output, "page="+page.title+";locale="+page.locale+";site=catalogue;argument="+page.label)
+		require.Contains(t, output, "page="+page.title+";locale="+page.locale+";site=catalog;argument="+page.label)
 	}
 	require.NotNil(t, s.RendererManager())
 }
