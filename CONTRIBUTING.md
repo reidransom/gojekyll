@@ -23,8 +23,7 @@ Fork and clone the repo.
 Install package dependencies and development tools:
 
 ```bash
-make setup
-go get -t ./...
+just setup
 ```
 
 [Install golangci-lint](https://golangci-lint.run/usage/install/#local-installation).
@@ -37,8 +36,8 @@ Install the Dart Sass executable (required for tests):
 ### Test and Lint
 
 ```bash
-make test
-make lint
+just test
+just lint
 ```
 
 ### Debugging tools

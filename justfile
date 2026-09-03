@@ -14,6 +14,22 @@ _default:
 test:
     go test ./...
 
+# install package dependencies and test tools
+setup:
+    go get -t ./...
+
+# list external direct imports
+imports:
+    go list -f '{{ "{{" }}join .Imports "\n"{{ "}}" }}' ./... | grep -v `go list -f '{{ "{{" }}.ImportPath{{ "}}" }}'` | grep '\.' | sort | uniq
+
+# list external transitive dependencies
+deps:
+    go list -f '{{ "{{" }}join .Deps "\n"{{ "}}" }}' ./... | grep -v `go list -f '{{ "{{" }}.ImportPath{{ "}}" }}'` | grep '\.' | sort | uniq
+
+# compile a race-detector build
+race:
+    go build -race -ldflags "{{_ldflags}}" -o {{binary}}-race {{package}}
+
 # compile the binary
 build:
     go mod tidy

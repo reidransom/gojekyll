@@ -39,9 +39,13 @@ This project uses [just](https://github.com/casey/just) as a command runner. Run
 just build      # compile the binary
 just buildlinux # cross-compile for linux (amd64 + arm64)
 just clean      # remove build artifacts
+just deps       # list external transitive dependencies
+just imports    # list external direct imports
 just install    # install the binary
 just lint       # run linter
+just race       # compile a race-detector build
 just release    # bump patch version, tag, and push
+just setup      # install package dependencies and test tools
 just test       # run tests
 ```
 
