@@ -15,6 +15,7 @@ type LocalizationConfig struct {
 	DefaultLanguage         string            `yaml:"default_language"`
 	DefaultLanguageInSubdir bool              `yaml:"default_language_in_subdir"`
 	MissingMessages         string            `yaml:"missing_messages"`
+	RequiredTranslations    []string          `yaml:"required_translations"`
 	Locales                 map[string]Locale `yaml:"locales"`
 }
 
@@ -89,6 +90,7 @@ func (l *LocalizationConfig) Validate() error {
 		l.Locales[key] = locale
 	}
 	problems = append(problems, l.validateFallbacks(keys)...)
+	problems = append(problems, l.validateRequiredTranslations()...)
 	problems = append(problems, fallbackCycleProblems(l.Locales)...)
 	if len(problems) == 0 {
 		return nil
@@ -111,6 +113,25 @@ func (l *LocalizationConfig) validateSettings() []string {
 		l.MissingMessages = "error"
 	} else if l.MissingMessages != "error" && l.MissingMessages != "key" {
 		problems = append(problems, fmt.Sprintf("missing_messages must be \"error\" or \"key\", got %q", l.MissingMessages))
+	}
+	return problems
+}
+
+func (l *LocalizationConfig) validateRequiredTranslations() []string {
+	seen := make(map[string]struct{}, len(l.RequiredTranslations))
+	var problems []string
+	for index, locale := range l.RequiredTranslations {
+		if _, duplicate := seen[locale]; duplicate {
+			problems = append(problems, fmt.Sprintf("required_translations[%d]: duplicate locale %q", index, locale))
+			continue
+		}
+		seen[locale] = struct{}{}
+		if _, exists := l.Locales[locale]; !exists {
+			problems = append(problems, fmt.Sprintf("required_translations[%d]: unknown locale %q", index, locale))
+		}
+		if locale == l.DefaultLanguage {
+			problems = append(problems, fmt.Sprintf("required_translations[%d]: default locale %q cannot be required", index, locale))
+		}
 	}
 	return problems
 }
@@ -255,6 +276,7 @@ func cloneLocalization(l *LocalizationConfig) *LocalizationConfig {
 		return nil
 	}
 	clone := *l
+	clone.RequiredTranslations = append([]string(nil), l.RequiredTranslations...)
 	clone.Locales = make(map[string]Locale, len(l.Locales))
 	for key, locale := range l.Locales {
 		clone.Locales[key] = cloneLocale(locale)
