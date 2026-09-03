@@ -176,6 +176,44 @@ project on source changes, and publish one staged generation at a time.
 See [Localization](/docs/localization/) for configuration, content-edition,
 data, message, and URL-filter examples.
 
+### Required translation targets
+
+`localization.required_translations` is an optional sequence of locale keys:
+
+```yaml
+localization:
+  default_language: en
+  locales:
+    en: { tag: en, label: English }
+    fr: { tag: fr, label: Français }
+    da: { tag: da, label: Dansk }
+  required_translations: [fr]
+```
+
+Each value must be a unique configured locale key other than
+`default_language`. Tags such as `fr-FR` and labels such as `Français` are not
+accepted. An omitted or empty sequence preserves permissive localization
+behavior; it does not validate `translation_exempt` front matter.
+
+When the sequence is non-empty, each included, non-static default-locale
+edition must use `translation_key` or exempt every required target. A keyed
+edition needs an included sibling for every required target unless that target
+is explicitly exempted. Use effective front matter on the default-locale
+edition:
+
+```yaml
+---
+translation_exempt: [fr]
+---
+```
+
+`translation_exempt` must be a sequence of unique locale-key strings. Every
+entry must be a configured required target; unknown, default, and optional
+locale keys are rejected. Exemptions on non-default editions are rejected, as
+are exemptions for a target that already has an included sibling. See
+[Localization](/docs/localization/) for normal, exempted, optional-locale, and
+active-build examples.
+
 ## Incremental regeneration
 
 As in Jekyll, pass `--incremental` (`-I`) or set `incremental: true` to only

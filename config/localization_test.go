@@ -49,6 +49,68 @@ localization:
 	require.Equal(t, "fr", c.Localization.Locales["de"].Fallbacks[0])
 }
 
+func TestLocalizationConfigValidatesRequiredTranslations(t *testing.T) {
+	c := Default()
+	require.NoError(t, Unmarshal([]byte(`
+localization:
+  default_language: en
+  required_translations: [fr, de]
+  locales:
+    en: {tag: en, label: English}
+    fr: {tag: fr, label: Français}
+    de: {tag: de, label: Deutsch}
+`), &c))
+	require.Equal(t, []string{"fr", "de"}, c.Localization.RequiredTranslations)
+}
+
+func TestLocalizationConfigRejectsInvalidRequiredTranslationsDeterministically(t *testing.T) {
+	src := []byte(`
+localization:
+  default_language: en
+  required_translations: [xx, fr, fr, en]
+  locales:
+    en: {tag: en, label: English}
+    fr: {tag: fr, label: Français}
+`)
+
+	var errors []string
+	for range 2 {
+		c := Default()
+		err := Unmarshal(src, &c)
+		require.Error(t, err)
+		errors = append(errors, err.Error())
+	}
+	require.Equal(t, errors[0], errors[1])
+	require.Equal(t, `invalid localization configuration:
+ - required_translations[0]: unknown locale "xx"
+ - required_translations[2]: duplicate locale "fr"
+ - required_translations[3]: default locale "en" cannot be required`, errors[0])
+}
+
+func TestLocalizationConfigAllowsOmittedOrEmptyRequiredTranslations(t *testing.T) {
+	for _, src := range []string{
+		`
+localization:
+  default_language: en
+  locales:
+    en: {tag: en, label: English}
+    fr: {tag: fr, label: Français}
+`,
+		`
+localization:
+  default_language: en
+  required_translations: []
+  locales:
+    en: {tag: en, label: English}
+    fr: {tag: fr, label: Français}
+`,
+	} {
+		c := Default()
+		require.NoError(t, Unmarshal([]byte(src), &c))
+		require.Empty(t, c.Localization.RequiredTranslations)
+	}
+}
+
 func TestLocalizationConfigRejectsRequiredAndLocaleRecordErrors(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -199,6 +261,7 @@ metadata:
   items: [shared]
 localization:
   default_language: en
+  required_translations: [fr]
   locales:
     en: {tag: en, label: English}
     de:
@@ -208,6 +271,7 @@ localization:
         title: Deutsch
         custom:
           items: [de]
+    fr: {tag: fr, label: Français}
 `), &c))
 
 	de, err := c.DeriveLocale("de")
@@ -224,12 +288,33 @@ localization:
 	deLocale := de.Localization.Locales["de"]
 	deLocale.Fallbacks = append(deLocale.Fallbacks, "en")
 	de.Localization.Locales["de"] = deLocale
+	de.Localization.RequiredTranslations[0] = "en"
 
 	require.Equal(t, "shared", c.Include[0])
 	require.Equal(t, true, c.Collections["guides"]["output"])
 	require.Equal(t, "shared", c.m["metadata"].(map[interface{}]interface{})["items"].([]interface{})[0])
 	require.NotContains(t, en.m, "custom")
 	require.Equal(t, []string{"en"}, c.Localization.Locales["de"].Fallbacks)
+	require.Equal(t, []string{"fr"}, c.Localization.RequiredTranslations)
+	require.Equal(t, []string{"fr"}, en.Localization.RequiredTranslations)
+}
+
+func TestConfigCloneSeparatesRequiredTranslations(t *testing.T) {
+	c := Default()
+	require.NoError(t, Unmarshal([]byte(`
+localization:
+  default_language: en
+  required_translations: [fr]
+  locales:
+    en: {tag: en, label: English}
+    fr: {tag: fr, label: Français}
+`), &c))
+
+	clone := c.Clone()
+	clone.Localization.RequiredTranslations[0] = "en"
+
+	require.Equal(t, []string{"fr"}, c.Localization.RequiredTranslations)
+	require.Equal(t, []string{"en"}, clone.Localization.RequiredTranslations)
 }
 
 func TestLocalizationRemainsOptIn(t *testing.T) {
