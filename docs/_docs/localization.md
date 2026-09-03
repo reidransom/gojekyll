@@ -129,10 +129,12 @@ _data/
 `messages.yml` supplies the `translate` filter. Message keys are dotted paths;
 missing messages fail the build unless `missing_messages: key` is configured.
 
+{% raw %}
 ```liquid
 {{ "nav.home" | translate }}
 {{ site.data.settings.title }}
 ```
+{% endraw %}
 
 ## Liquid contract
 
@@ -150,11 +152,13 @@ content route. `localized_url` preserves query strings and fragments. It leaves
 external URLs, fragments, and shared assets unchanged, and rejects unknown
 internal routes rather than guessing a locale prefix.
 
+{% raw %}
 ```liquid
 {% assign german = page | translation: "de" %}
 {% if german %}<a href="{{ german.url }}">Deutsch</a>{% endif %}
 <a href="{{ "/about/" | localized_url: "de" }}">Über uns</a>
 ```
+{% endraw %}
 
 Localized builds validate every route before publishing. Output is rendered to
 a sibling staging directory and promoted only after the complete generation
