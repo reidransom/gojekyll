@@ -1,6 +1,8 @@
 package renderers
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/reidransom/jigyll/config"
@@ -48,6 +50,47 @@ func TestLiquidRangeAcceptsArithmeticResult(t *testing.T) {
 	out, err := tpl.Render(liquid.Bindings{})
 	require.NoError(t, err)
 	require.Equal(t, "1", string(out))
+}
+
+func TestLiquidEngineCachesIncludedFiles(t *testing.T) {
+	cfg := config.Default()
+	cfg.Source = t.TempDir()
+	filename := filepath.Join(cfg.Source, cfg.IncludesDir, "navigation.html")
+	store := &countingTemplateStore{templates: map[string]string{
+		filename: "first navigation",
+	}}
+
+	manager := Manager{cfg: cfg}
+	engine := manager.makeLiquidEngine()
+	engine.RegisterTemplateStore(store)
+	template, err := engine.ParseTemplateLocation([]byte(`{% include navigation.html %}`), "page.html", 1)
+	require.NoError(t, err)
+
+	output, err := template.Render(nil)
+	require.NoError(t, err)
+	require.Equal(t, "first navigation", string(output))
+
+	store.templates[filename] = "second navigation"
+	output, err = template.Render(nil)
+	require.NoError(t, err)
+	require.Equal(t, "first navigation", string(output))
+	require.Equal(t, 1, store.reads[filename])
+}
+
+type countingTemplateStore struct {
+	templates map[string]string
+	reads     map[string]int
+}
+
+func (s *countingTemplateStore) ReadTemplate(filename string) ([]byte, error) {
+	if source, ok := s.templates[filename]; ok {
+		if s.reads == nil {
+			s.reads = make(map[string]int)
+		}
+		s.reads[filename]++
+		return []byte(source), nil
+	}
+	return nil, os.ErrNotExist
 }
 
 func renderUndefinedFilter(c config.Config) ([]byte, error) {

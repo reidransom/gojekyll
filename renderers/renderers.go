@@ -192,6 +192,7 @@ func (p *Manager) makeLiquidEngine() *liquid.Engine {
 		filters.AddLocalizationFilters(engine, p.Localization)
 	}
 	tags.AddJekyllTags(engine, &p.cfg, dirs, p.RelativeFilenameToURL)
+	engine.EnableFileCache()
 	return engine
 }
 
