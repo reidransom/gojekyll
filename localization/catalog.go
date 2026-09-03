@@ -87,9 +87,12 @@ func BuildCatalog(registry *config.LocalizationConfig, documents []Document) (*C
 	catalog := &Catalog{editions: make(map[Identity]map[string]Edition)}
 	byLocale := make(map[string][]Edition, len(registry.Locales))
 	problems := make([]string, 0)
-	exemptions := make(map[int]map[string]struct{})
 	activePolicy := len(registry.RequiredTranslations) != 0
-	for index, document := range documents {
+	var records []documentRecord
+	if activePolicy {
+		records = make([]documentRecord, 0, len(documents))
+	}
+	for _, document := range documents {
 		if document.Static || !document.Included {
 			continue
 		}
@@ -98,7 +101,11 @@ func BuildCatalog(registry *config.LocalizationConfig, documents []Document) (*C
 		problems = append(problems, assignment.problems...)
 		if activePolicy {
 			valid, errs := validateExemptions(registry, document, assignment)
-			exemptions[index] = valid
+			records = append(records, documentRecord{
+				document:   document,
+				assignment: assignment,
+				exemptions: valid,
+			})
 			problems = append(problems, errs...)
 		}
 		if len(assignment.problems) != 0 {
@@ -124,7 +131,7 @@ func BuildCatalog(registry *config.LocalizationConfig, documents []Document) (*C
 		set[assignment.locale.Key] = edition
 	}
 	if activePolicy {
-		problems = append(problems, requiredTranslationProblems(registry, catalog.editions, documents, exemptions)...)
+		problems = append(problems, requiredTranslationProblems(registry, catalog.editions, records)...)
 	}
 	if len(problems) != 0 {
 		sort.Strings(problems)
@@ -193,6 +200,12 @@ type documentAssignment struct {
 	problems       []string
 }
 
+type documentRecord struct {
+	document   Document
+	assignment documentAssignment
+	exemptions map[string]struct{}
+}
+
 func assignDocument(registry *config.LocalizationConfig, document Document) documentAssignment {
 	source := documentSource(document)
 	assignment := documentAssignment{}
@@ -239,6 +252,12 @@ func validateExemptions(registry *config.LocalizationConfig, document Document, 
 		return nil, nil
 	}
 
+	wrongOwner := assignment.validLocale && assignment.locale.Key != registry.DefaultLanguage
+	problems := make([]string, 0)
+	if wrongOwner {
+		problems = append(problems, fmt.Sprintf("%s: translation_exempt is only allowed on default locale %q editions", documentSource(document), registry.DefaultLanguage))
+	}
+
 	var values []interface{}
 	switch value := raw.(type) {
 	case []interface{}:
@@ -249,14 +268,9 @@ func validateExemptions(registry *config.LocalizationConfig, document Document, 
 			values[index] = locale
 		}
 	default:
-		return nil, []string{fmt.Sprintf("%s: translation_exempt must be a sequence of locale-key strings", documentSource(document))}
+		return nil, append(problems, fmt.Sprintf("%s: translation_exempt must be a sequence of locale-key strings", documentSource(document)))
 	}
 
-	wrongOwner := assignment.validLocale && assignment.locale.Key != registry.DefaultLanguage
-	problems := make([]string, 0)
-	if wrongOwner {
-		problems = append(problems, fmt.Sprintf("%s: translation_exempt is only allowed on default locale %q editions", documentSource(document), registry.DefaultLanguage))
-	}
 	valid := make(map[string]struct{})
 	counts := make(map[string]int, len(values))
 	for _, rawLocale := range values {
@@ -275,8 +289,7 @@ func validateExemptions(registry *config.LocalizationConfig, document Document, 
 			problems = append(problems, fmt.Sprintf("%s: translation_exempt[%d]: duplicate locale %q", documentSource(document), index, locale))
 			continue
 		}
-		seen[locale] = struct{}{}
-		if _, exists := registry.Locale(locale); !exists {
+		if _, exists := registry.Locales[locale]; !exists {
 			problems = append(problems, fmt.Sprintf("%s: translation_exempt[%d]: unknown locale %q", documentSource(document), index, locale))
 			continue
 		}
@@ -292,18 +305,16 @@ func validateExemptions(registry *config.LocalizationConfig, document Document, 
 	return valid, problems
 }
 
-func requiredTranslationProblems(registry *config.LocalizationConfig, editions map[Identity]map[string]Edition, documents []Document, exemptions map[int]map[string]struct{}) []string {
+func requiredTranslationProblems(registry *config.LocalizationConfig, editions map[Identity]map[string]Edition, records []documentRecord) []string {
 	problems := make([]string, 0)
 	reportedMissing := make(map[Identity]map[string]struct{})
-	for index, document := range documents {
-		if document.Static || !document.Included {
-			continue
-		}
-		assignment := assignDocument(registry, document)
+	for _, record := range records {
+		document := record.document
+		assignment := record.assignment
 		if len(assignment.problems) != 0 || assignment.locale.Key != registry.DefaultLanguage {
 			continue
 		}
-		exempt := exemptions[index]
+		exempt := record.exemptions
 		if assignment.translationKey == "" {
 			for _, locale := range registry.RequiredTranslations {
 				if _, covered := exempt[locale]; !covered {
@@ -353,8 +364,8 @@ func documentSortKey(document Document) string {
 }
 
 func documentSource(document Document) string {
-	if document.Source != "" {
-		return document.Source
+	if document.RelativePath != "" {
+		return document.RelativePath
 	}
-	return document.RelativePath
+	return document.Source
 }

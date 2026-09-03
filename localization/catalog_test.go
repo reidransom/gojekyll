@@ -73,6 +73,18 @@ func TestBuildCatalogReportsInvalidAssignmentsAndIncludedDuplicatesDeterministic
 	require.EqualError(t, err, "invalid localization catalog:\n - a.md: namespace \"pages\" translation_key \"same\" locale \"en\" has duplicate included editions: a.md and b.md\n - key.md: translation_key must be a non-empty string\n - unknown.md: lang \"zz\" does not name a configured locale")
 }
 
+func TestBuildCatalogReportsDocumentDiagnosticsUsingRelativePaths(t *testing.T) {
+	_, err := BuildCatalog(requiredRegistry(t, "fr"), []Document{{
+		Source:       filepath.Join(t.TempDir(), "about.md"),
+		RelativePath: "about.md",
+		Namespace:    PagesNamespace,
+		FrontMatter:  frontmatter.FrontMatter{"lang": "en"},
+		Included:     true,
+	}})
+	require.EqualError(t, err, `invalid localization catalog:
+ - about.md: default-locale document requires a translation_key or translation_exempt covering required locale "fr"`)
+}
+
 func TestBuildCatalogLeavesRequiredTranslationPolicyDisabledBehaviorUnchanged(t *testing.T) {
 	defaultWithoutKey := document("default.md", PagesNamespace, "en", "", true)
 	defaultWithoutKey.FrontMatter["translation_exempt"] = true
@@ -123,6 +135,19 @@ func TestBuildCatalogRequiresConfiguredTargetInEachNamespace(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestBuildCatalogRequiresFrenchDespiteDanishOptionalSibling(t *testing.T) {
+	registry := requiredRegistry(t, "fr")
+	registry.Locales["da"] = config.Locale{Tag: "da", Label: "Dansk"}
+	require.NoError(t, registry.Validate())
+
+	_, err := BuildCatalog(registry, []Document{
+		document("about.en.md", PagesNamespace, "en", "about", true),
+		document("about.da.md", PagesNamespace, "da", "about", true),
+	})
+	require.EqualError(t, err, `invalid localization catalog:
+ - namespace "pages" translation_key "about" is missing required locale "fr"`)
+}
+
 func TestBuildCatalogAcceptsValidExemptionsAndRejectsRedundantOnes(t *testing.T) {
 	registry := requiredRegistry(t, "de", "fr")
 	defaultEdition := document("about.en.md", PagesNamespace, "en", "about", true)
@@ -148,7 +173,7 @@ func TestBuildCatalogAggregatesInvalidExemptionsAndIndependentProblems(t *testin
 	invalidEntries := document("b.md", PagesNamespace, "en", "b", true)
 	invalidEntries.FrontMatter["translation_exempt"] = []interface{}{3, "unknown", "de", "fr", "fr"}
 	nonDefault := document("c.md", PagesNamespace, "fr", "c", true)
-	nonDefault.FrontMatter["translation_exempt"] = []string{"fr"}
+	nonDefault.FrontMatter["translation_exempt"] = "fr"
 	redundant := document("d.md", PagesNamespace, "en", "d", true)
 	redundant.FrontMatter["translation_exempt"] = []string{"fr"}
 	invalidKey := document("key.md", PagesNamespace, "en", "", true)
@@ -171,6 +196,7 @@ func TestBuildCatalogAggregatesInvalidExemptionsAndIndependentProblems(t *testin
  - b.md: translation_exempt[2]: locale "de" is not required
  - b.md: translation_exempt[4]: duplicate locale "fr"
  - c.md: translation_exempt is only allowed on default locale "en" editions
+ - c.md: translation_exempt must be a sequence of locale-key strings
  - d.md: translation_exempt for required locale "fr" is redundant because namespace "pages" translation_key "d" has an included edition
  - key.md: translation_exempt[0]: unknown locale "unknown"
  - key.md: translation_key must be a non-empty string
@@ -185,6 +211,7 @@ func TestBuildCatalogSortsPolicyAndExistingProblemsDeterministically(t *testing.
 		document("b.md", PagesNamespace, "en", "same", true),
 		document("a.md", PagesNamespace, "en", "same", true),
 		document("unknown.md", PagesNamespace, "zz", "x", true),
+		document("keyless.md", PagesNamespace, "en", "", true),
 	}
 	documents[0].FrontMatter["translation_exempt"] = []string{"fr"}
 
@@ -192,9 +219,10 @@ func TestBuildCatalogSortsPolicyAndExistingProblemsDeterministically(t *testing.
 	_, second := BuildCatalog(registry, documents)
 	require.EqualError(t, first, `invalid localization catalog:
  - a.md: namespace "pages" translation_key "same" locale "en" has duplicate included editions: a.md and b.md
- - z.md: translation_exempt for required locale "fr" is redundant because namespace "pages" translation_key "z" has an included edition
+ - keyless.md: default-locale document requires a translation_key or translation_exempt covering required locale "fr"
  - namespace "pages" translation_key "same" is missing required locale "fr"
- - unknown.md: lang "zz" does not name a configured locale`)
+ - unknown.md: lang "zz" does not name a configured locale
+ - z.md: translation_exempt for required locale "fr" is redundant because namespace "pages" translation_key "z" has an included edition`)
 	require.EqualError(t, second, first.Error())
 }
 

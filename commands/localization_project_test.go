@@ -89,6 +89,7 @@ func TestBuildCommandRetainsOutputUntilRequiredTranslationRecovers(t *testing.T)
 	initialOutput := readLocalizedAcceptanceOutput(t, destination, "guide/index.html")
 	require.Contains(t, initialOutput, "first generation")
 	require.FileExists(t, filepath.Join(destination, "fr", "guide", "index.html"))
+	initialTree := readLocalizedAcceptanceTree(t, destination)
 
 	french := filepath.Join(source, "french.md")
 	require.NoError(t, os.WriteFile(french, []byte(`---
@@ -102,7 +103,7 @@ French guide
 
 	err := ParseAndRun([]string{"build", "-s", source, "-q"})
 	require.ErrorContains(t, err, `namespace "pages" translation_key "guide" is missing required locale "fr"`)
-	require.Equal(t, initialOutput, readLocalizedAcceptanceOutput(t, destination, "guide/index.html"))
+	require.Equal(t, initialTree, readLocalizedAcceptanceTree(t, destination))
 
 	english := filepath.Join(source, "english.md")
 	require.NoError(t, os.WriteFile(english, []byte(`---
@@ -178,4 +179,28 @@ func readLocalizedAcceptanceOutput(t *testing.T, destination, relative string) s
 	contents, err := os.ReadFile(filepath.Join(destination, relative))
 	require.NoError(t, err)
 	return string(contents)
+}
+
+func readLocalizedAcceptanceTree(t *testing.T, destination string) map[string][]byte {
+	t.Helper()
+	tree := make(map[string][]byte)
+	require.NoError(t, filepath.Walk(destination, func(filename string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relative, err := filepath.Rel(destination, filename)
+		if err != nil {
+			return err
+		}
+		contents, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+		tree[filepath.ToSlash(relative)] = contents
+		return nil
+	}))
+	return tree
 }

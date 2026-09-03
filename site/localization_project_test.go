@@ -62,6 +62,128 @@ French guide
 	requireLocalizedGeneration(t, replacement, "second")
 }
 
+func TestLocalizedProjectRequiredTranslationsFollowInclusionSettings(t *testing.T) {
+	enabled := true
+	tests := []struct {
+		name              string
+		config            string
+		relativePath      string
+		contents          string
+		flags             config.Flags
+		translationKey    string
+		wantMissingTarget bool
+	}{
+		{
+			name:         "excluded",
+			config:       "exclude: [excluded.md]\n",
+			relativePath: "excluded.md",
+			contents: `---
+lang: en
+translation_key: excluded
+---
+Excluded
+`,
+		},
+		{
+			name:         "static",
+			relativePath: "static.txt",
+			contents:     "Static\n",
+		},
+		{
+			name:         "draft-disabled",
+			relativePath: "_drafts/draft.md",
+			contents: `---
+lang: en
+translation_key: draft
+---
+Draft
+`,
+		},
+		{
+			name:         "draft-enabled",
+			relativePath: "_drafts/draft.md",
+			contents: `---
+lang: en
+translation_key: draft
+---
+Draft
+`,
+			flags:             config.Flags{Drafts: &enabled},
+			translationKey:    "draft",
+			wantMissingTarget: true,
+		},
+		{
+			name:         "future-disabled",
+			relativePath: "_posts/9999-12-31-future.md",
+			contents: `---
+lang: en
+translation_key: future
+---
+Future
+`,
+		},
+		{
+			name:         "future-enabled",
+			relativePath: "_posts/9999-12-31-future.md",
+			contents: `---
+lang: en
+translation_key: future
+---
+Future
+`,
+			flags:             config.Flags{Future: &enabled},
+			translationKey:    "future",
+			wantMissingTarget: true,
+		},
+		{
+			name:         "unpublished-disabled",
+			relativePath: "unpublished.md",
+			contents: `---
+lang: en
+translation_key: unpublished
+published: false
+---
+Unpublished
+`,
+		},
+		{
+			name:         "unpublished-enabled",
+			relativePath: "unpublished.md",
+			contents: `---
+lang: en
+translation_key: unpublished
+published: false
+---
+Unpublished
+`,
+			flags:             config.Flags{Unpublished: &enabled},
+			translationKey:    "unpublished",
+			wantMissingTarget: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			source, _, _ := requiredTranslationProjectFixture(t)
+			if test.config != "" {
+				filename := filepath.Join(source, "_config.yml")
+				contents, err := os.ReadFile(filename)
+				require.NoError(t, err)
+				require.NoError(t, os.WriteFile(filename, append(contents, test.config...), 0o644))
+			}
+			writeLocalizedProjectFile(t, source, test.relativePath, test.contents)
+
+			base, err := FromDirectory(source, test.flags)
+			require.NoError(t, err)
+			_, _, err = BuildLocalizedProject(base)
+			if test.wantMissingTarget {
+				require.ErrorContains(t, err, `translation_key "`+test.translationKey+`" is missing required locale "fr"`)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
 func requiredTranslationProjectFixture(t *testing.T) (source, english, french string) {
 	t.Helper()
 	source = t.TempDir()
