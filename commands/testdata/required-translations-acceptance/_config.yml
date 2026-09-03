@@ -1,0 +1,7 @@
+destination: _site
+localization:
+  default_language: en
+  required_translations: [fr]
+  locales:
+    en: {tag: en, label: English}
+    fr: {tag: fr, label: Français}
