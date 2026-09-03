@@ -289,6 +289,7 @@ func validateExemptions(registry *config.LocalizationConfig, document Document, 
 			problems = append(problems, fmt.Sprintf("%s: translation_exempt[%d]: duplicate locale %q", documentSource(document), index, locale))
 			continue
 		}
+		seen[locale] = struct{}{}
 		if _, exists := registry.Locales[locale]; !exists {
 			problems = append(problems, fmt.Sprintf("%s: translation_exempt[%d]: unknown locale %q", documentSource(document), index, locale))
 			continue
