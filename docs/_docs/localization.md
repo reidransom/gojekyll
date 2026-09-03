@@ -46,6 +46,71 @@ Translation keys are scoped to pages or to one collection. Jigyll never
 substitutes default-language page content for a missing edition: unavailable
 editions are omitted from routes, lists, feeds, and language selectors.
 
+## Required translations
+
+Set `required_translations` to make coverage of selected locale keys a build
+policy. The option is opt-in: omit it, or set it to `[]`, to keep the existing
+permissive catalog behavior. Each target is a configured, non-default locale
+**key**—not a BCP 47 tag or a label.
+
+In this project, French is required and Danish is optional:
+
+```yaml
+localization:
+  default_language: en
+  locales:
+    en: { tag: en, label: English }
+    fr: { tag: fr, label: Français }
+    da: { tag: da, label: Dansk }
+  required_translations: [fr]
+```
+
+An included English edition with `translation_key: guide` needs an included
+French edition with the same key in the same namespace (pages or one
+collection):
+
+```yaml
+---
+lang: en
+translation_key: guide
+---
+```
+
+```yaml
+---
+lang: fr
+translation_key: guide
+---
+```
+
+An included Danish `guide` edition is allowed, but it neither creates nor
+satisfies the required French edition. A translation set with no included
+English edition is also allowed.
+
+The included default-locale edition owns each coverage obligation. For a
+deliberate exception, put `translation_exempt` on that edition and name the
+required locale key:
+
+```yaml
+---
+lang: en
+translation_exempt: [fr]
+---
+```
+
+This keyless English document is valid because French is its only required
+target. With more required targets, its exemption list must name all of them;
+a keyed document may exempt only selected targets. An exemption is not valid
+on a non-default edition, for an optional or unknown locale, more than once,
+or when an included sibling already provides that locale.
+
+Only included, non-static documents participate. Existing exclusion,
+`show_drafts`, `future`, and `unpublished` settings decide inclusion for the
+active build, so hidden drafts and future or unpublished documents do not
+block a normal build. When the build includes them, they must meet the same
+policy. A missing required edition fails the build; Jigyll never publishes
+fallback default-language page content at that locale's route.
+
 ## Data and messages
 
 Shared `_data` remains visible in every locale. Put locale modules below
