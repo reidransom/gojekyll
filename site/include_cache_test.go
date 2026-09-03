@@ -176,6 +176,7 @@ func TestIncludeSiteReloadedAfterSourceIncludeChanges(t *testing.T) {
 				t.Run(change.name, func(t *testing.T) {
 					sourceDir := t.TempDir()
 					writeIncludeCacheSiteFile(t, sourceDir, "_config.yml", "theme: test-theme\n")
+					writeIncludeCacheSiteFile(t, sourceDir, "_theme/test-theme/_includes/placeholder.html", "placeholder")
 					writeIncludeCacheSiteFile(t, sourceDir, "_layouts/default.html", `{% include navigation.html %}|{{ content }}`)
 					writeIncludeCacheSiteFile(t, sourceDir, "index.md", "---\nlayout: default\n---\npage body")
 					change.setup(t, sourceDir)
