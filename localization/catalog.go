@@ -246,6 +246,21 @@ func assignDocument(registry *config.LocalizationConfig, document Document) docu
 	return assignment
 }
 
+func exemptionValues(raw interface{}) ([]interface{}, bool) {
+	switch value := raw.(type) {
+	case []interface{}:
+		return value, true
+	case []string:
+		values := make([]interface{}, len(value))
+		for index, locale := range value {
+			values[index] = locale
+		}
+		return values, true
+	default:
+		return nil, false
+	}
+}
+
 func validateExemptions(registry *config.LocalizationConfig, document Document, assignment documentAssignment) (map[string]struct{}, []string) {
 	raw, found := document.FrontMatter["translation_exempt"]
 	if !found {
@@ -258,16 +273,8 @@ func validateExemptions(registry *config.LocalizationConfig, document Document, 
 		problems = append(problems, fmt.Sprintf("%s: translation_exempt is only allowed on default locale %q editions", documentSource(document), registry.DefaultLanguage))
 	}
 
-	var values []interface{}
-	switch value := raw.(type) {
-	case []interface{}:
-		values = value
-	case []string:
-		values = make([]interface{}, len(value))
-		for index, locale := range value {
-			values[index] = locale
-		}
-	default:
+	values, validContainer := exemptionValues(raw)
+	if !validContainer {
 		return nil, append(problems, fmt.Sprintf("%s: translation_exempt must be a sequence of locale-key strings", documentSource(document)))
 	}
 
