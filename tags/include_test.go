@@ -1,6 +1,7 @@
 package tags
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -114,6 +115,52 @@ func TestRecursiveIncludeWithChangingArguments(t *testing.T) {
 	require.Equal(t, "210", strings.TrimSpace(s))
 }
 
+func TestIncludeTagRestoresLocalsAfterRenderErrorWithFileCache(t *testing.T) {
+	includeDir := t.TempDir()
+	writeIncludeCachedFixture(t, includeDir, "failing.html", `{% include failing.html item=include.item %}`)
+	writeIncludeCachedFixture(t, includeDir, "recovered.html", `{{ include.item }}`)
+
+	engine := liquid.NewEngine()
+	cfg := config.Default()
+	AddJekyllTags(engine, &cfg, []string{includeDir}, func(string) (string, bool) { return "", false })
+	engine.EnableFileCache()
+
+	outerInclude := map[string]interface{}{"item": "outer"}
+	outerStack := []includeStackEntry{{filename: "outer.html", include: outerInclude}}
+	bindings := liquid.Bindings{
+		"include":           outerInclude,
+		"__include_stack__": outerStack,
+	}
+
+	for range 2 {
+		_, err := engine.ParseAndRenderString(`{% include failing.html item="inner" %}`, bindings)
+		require.ErrorContains(t, err, "include loop detected")
+		require.Equal(t, outerInclude, bindings["include"])
+		require.Equal(t, outerStack, bindings["__include_stack__"])
+	}
+
+	output, err := engine.ParseAndRenderString(`{% include recovered.html item="recovered" %}`, bindings)
+	require.NoError(t, err)
+	require.Equal(t, "recovered", output)
+	require.Equal(t, outerInclude, bindings["include"])
+	require.Equal(t, outerStack, bindings["__include_stack__"])
+}
+
+func TestIncludeTagDetectsSameArgumentLoopWithFileCache(t *testing.T) {
+	includeDir := t.TempDir()
+	writeIncludeCachedFixture(t, includeDir, "same-arguments.html", `{% include same-arguments.html item=include.item %}`)
+
+	engine := liquid.NewEngine()
+	cfg := config.Default()
+	AddJekyllTags(engine, &cfg, []string{includeDir}, func(string) (string, bool) { return "", false })
+	engine.EnableFileCache()
+
+	for range 2 {
+		_, err := engine.ParseAndRenderString(`{% include same-arguments.html item="same" %}`, liquid.Bindings{})
+		require.ErrorContains(t, err, "include loop detected")
+	}
+}
+
 func TestIncludeRelativeTag(t *testing.T) {
 	engine := liquid.NewEngine()
 	cfg := config.Default()
@@ -126,4 +173,45 @@ func TestIncludeRelativeTag(t *testing.T) {
 	s, err := tpl.Render(bindings)
 	require.NoError(t, err)
 	require.Equal(t, "include_relative target", strings.TrimSpace(string(s)))
+}
+
+func TestIncludeRelativeTagUsesCallerDirectoryWithFileCache(t *testing.T) {
+	root := t.TempDir()
+	callers := map[string]struct {
+		path   string
+		output string
+	}{
+		"first": {
+			path:   filepath.Join(root, "first", "page.md"),
+			output: "first navigation",
+		},
+		"second": {
+			path:   filepath.Join(root, "second", "page.md"),
+			output: "second navigation",
+		},
+	}
+	writeIncludeCachedFixture(t, filepath.Dir(callers["first"].path), "fragments/navigation.html", callers["first"].output)
+	writeIncludeCachedFixture(t, filepath.Dir(callers["second"].path), "fragments/navigation.html", callers["second"].output)
+
+	for _, order := range [][]string{
+		{"first", "second"},
+		{"second", "first"},
+	} {
+		engine := liquid.NewEngine()
+		cfg := config.Default()
+		AddJekyllTags(engine, &cfg, []string{}, func(string) (string, bool) { return "", false })
+		engine.EnableFileCache()
+
+		for _, caller := range order {
+			tpl, err := engine.ParseTemplateLocation(
+				[]byte(`{% include_relative fragments/navigation.html %}`),
+				callers[caller].path,
+				1,
+			)
+			require.NoError(t, err)
+			output, err := tpl.Render(liquid.Bindings{})
+			require.NoError(t, err)
+			require.Equal(t, callers[caller].output, string(output))
+		}
+	}
 }

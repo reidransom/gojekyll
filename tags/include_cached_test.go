@@ -141,7 +141,7 @@ func newIncludeCachedEngine(t *testing.T, includeDirs []string, enabled bool) *l
 	return engine
 }
 
-func writeIncludeCachedFixture(t *testing.T, root, name, content string) {
+func writeIncludeCachedFixture(t testing.TB, root, name, content string) {
 	t.Helper()
 	filename := filepath.Join(root, name)
 	require.NoError(t, os.MkdirAll(filepath.Dir(filename), 0o755))
