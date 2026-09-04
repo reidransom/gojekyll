@@ -157,8 +157,8 @@ localization:
 	writeLocalizedServerFile(t, source, "index.md", "---\nlang: en\npermalink: /recovered/\nlayout: default\n---\nrecovered English route\n")
 	require.True(t, server.reload(site.FilesEvent{Time: time.Unix(2, 0), Paths: []string{"_layouts/default.html", "index.md"}}))
 	assertLocalizedResponse(t, server, "/old/", http.StatusNotFound, "404 page not found")
-	assertLocalizedResponse(t, server, "/recovered/", http.StatusOK, "recovered:recovered English route")
-	assertLocalizedResponse(t, server, "/de/willkommen/", http.StatusOK, "recovered:German route")
+	assertLocalizedResponse(t, server, "/recovered/", http.StatusOK, "recovered:<p>recovered English route</p>")
+	assertLocalizedResponse(t, server, "/de/willkommen/", http.StatusOK, "recovered:<p>German route</p>")
 }
 
 func TestLocalizedWatchPublishesOneCoalescedFollowUpGeneration(t *testing.T) {

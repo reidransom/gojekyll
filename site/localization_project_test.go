@@ -71,8 +71,8 @@ func TestLocalizedDevelopmentProjectMaterializesRoutesWithoutDestinationPublicat
 	project, _, err := BuildLocalizedDevelopmentProject(base)
 	require.NoError(t, err)
 
-	require.Contains(t, localizedServedContent(t, project, "/guide/"), "layout:start English guide layout:end")
-	require.Contains(t, localizedServedContent(t, project, "/de/willkommen/"), "layout:start German guide layout:end")
+	require.Contains(t, localizedServedContent(t, project, "/guide/"), "layout:start <p>English guide</p>\n layout:end")
+	require.Contains(t, localizedServedContent(t, project, "/de/willkommen/"), "layout:start <p>German guide</p>\n layout:end")
 	require.Equal(t, "body { color: red; }\n", localizedServedContent(t, project, "/assets/site.css"))
 	require.Equal(t, "preserve this destination", string(readLocalizedProjectOutput(t, filepath.Join(destination, "sentinel.txt"))))
 	require.NoFileExists(t, filepath.Join(destination, "guide", "index.html"))
@@ -100,7 +100,7 @@ func TestLocalizedDevelopmentRebuildRetainsPriorMaterializedGenerationOnLayoutFa
 	replacement, _, err := project.RebuildDevelopment()
 	require.Error(t, err)
 	require.Nil(t, replacement)
-	require.Contains(t, localizedServedContent(t, project, "/guide/"), "layout:start English guide layout:end")
+	require.Contains(t, localizedServedContent(t, project, "/guide/"), "layout:start <p>English guide</p>\n layout:end")
 	require.Equal(t, "preserve this destination", string(readLocalizedProjectOutput(t, filepath.Join(destination, "sentinel.txt"))))
 	require.NoFileExists(t, filepath.Join(destination, "guide", "index.html"))
 }
@@ -114,8 +114,8 @@ func TestLocalizedProductionProjectStillPublishesDestination(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, project)
 
-	require.Contains(t, string(readLocalizedProjectOutput(t, filepath.Join(destination, "guide", "index.html"))), "layout:start English guide layout:end")
-	require.Contains(t, string(readLocalizedProjectOutput(t, filepath.Join(destination, "de", "willkommen", "index.html"))), "layout:start German guide layout:end")
+	require.Contains(t, string(readLocalizedProjectOutput(t, filepath.Join(destination, "guide", "index.html"))), "layout:start <p>English guide</p>\n layout:end")
+	require.Contains(t, string(readLocalizedProjectOutput(t, filepath.Join(destination, "de", "willkommen", "index.html"))), "layout:start <p>German guide</p>\n layout:end")
 	require.Equal(t, "body { color: red; }\n", string(readLocalizedProjectOutput(t, filepath.Join(destination, "assets", "site.css"))))
 	require.NoFileExists(t, filepath.Join(destination, "sentinel.txt"))
 }
