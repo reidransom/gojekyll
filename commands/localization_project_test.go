@@ -10,6 +10,8 @@ import (
 
 func TestBuildCommandBuildsLocalizedAcceptanceFixture(t *testing.T) {
 	source := copyLocalizedAcceptanceFixture(t)
+	writeSitemapExclusionFixtures(t, source, "en")
+	writeLocalizedSitemap404Fixtures(t, source)
 
 	require.NoError(t, ParseAndRun([]string{"build", "-s", source, "-q"}))
 
@@ -78,6 +80,17 @@ func TestBuildCommandBuildsLocalizedAcceptanceFixture(t *testing.T) {
 	require.Contains(t, sitemap, `hreflang="en" href="https://example.test/handbook/about/"`)
 	require.Contains(t, sitemap, `hreflang="de" href="https://example.test/handbook/de/uber-uns/"`)
 	require.Contains(t, sitemap, `hreflang="x-default" href="https://example.test/handbook/about/"`)
+	for _, excluded := range []string{
+		"https://example.test/handbook/assets/fonts/site.woff2",
+		"https://example.test/handbook/assets/logo.png",
+		"https://example.test/handbook/pagefind/pagefind.js",
+		"https://example.test/handbook/private/",
+		"https://example.test/handbook/404.html",
+		"https://example.test/handbook/de/404.html",
+	} {
+		require.NotContains(t, sitemap, excluded)
+	}
+
 	require.Contains(t, readLocalizedAcceptanceOutput(t, destination, "robots.txt"), "Sitemap: https://example.test/handbook/sitemap.xml")
 }
 
@@ -128,15 +141,69 @@ French guide
 
 func TestBuildCommandKeepsNonlocalizedOutput(t *testing.T) {
 	source := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(source, "_config.yml"), []byte("destination: _site\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(source, "_config.yml"), []byte(`destination: _site
+url: https://example.test
+plugins:
+  - jekyll-sitemap
+`), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(source, "index.md"), []byte(`---
 permalink: /
 ---
 ordinary output
 `), 0o644))
+	writeSitemapExclusionFixtures(t, source, "")
 
 	require.NoError(t, ParseAndRun([]string{"build", "-s", source, "-q"}))
-	require.Contains(t, readLocalizedAcceptanceOutput(t, filepath.Join(source, "_site"), "index.html"), "ordinary output")
+	destination := filepath.Join(source, "_site")
+	require.Contains(t, readLocalizedAcceptanceOutput(t, destination, "index.html"), "ordinary output")
+	sitemap := readLocalizedAcceptanceOutput(t, destination, "sitemap.xml")
+	require.Contains(t, sitemap, "<loc>https://example.test/</loc>")
+	for _, excluded := range []string{
+		"https://example.test/assets/fonts/site.woff2",
+		"https://example.test/assets/logo.png",
+		"https://example.test/pagefind/pagefind.js",
+		"https://example.test/private/",
+	} {
+		require.NotContains(t, sitemap, excluded)
+	}
+}
+
+func writeSitemapExclusionFixtures(t *testing.T, source, language string) {
+	t.Helper()
+	for name, contents := range map[string]string{
+		"assets/fonts/site.woff2": "font",
+		"assets/logo.png":         "image",
+		"pagefind/pagefind.js":    "pagefind",
+	} {
+		filename := filepath.Join(source, name)
+		require.NoError(t, os.MkdirAll(filepath.Dir(filename), 0o755))
+		require.NoError(t, os.WriteFile(filename, []byte(contents), 0o644))
+	}
+
+	frontMatter := ""
+	if language != "" {
+		frontMatter = "lang: " + language + "\n"
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(source, "private.md"), []byte(`---
+`+frontMatter+`robots: noindex, nofollow
+permalink: /private/
+---
+Private
+`), 0o644))
+}
+func writeLocalizedSitemap404Fixtures(t *testing.T, source string) {
+	t.Helper()
+	for language, contents := range map[string]string{
+		"en": "English not found",
+		"de": "Deutsch nicht gefunden",
+	} {
+		require.NoError(t, os.WriteFile(filepath.Join(source, "not-found-"+language+".md"), []byte(`---
+lang: `+language+`
+permalink: /404.html
+---
+`+contents+`
+`), 0o644))
+	}
 }
 
 func copyLocalizedAcceptanceFixture(t *testing.T) string {

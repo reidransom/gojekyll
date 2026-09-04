@@ -9,14 +9,13 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/reidransom/jigyll/config"
 	"github.com/reidransom/jigyll/localization"
 	"github.com/reidransom/jigyll/pages"
 	"github.com/reidransom/jigyll/plugins"
 	"github.com/reidransom/jigyll/utils"
-	"github.com/reidransom/liquid"
-	liquidtags "github.com/reidransom/liquid/tags"
 )
 
 // LocalizedBuild enters the project-level production seam for an opt-in
@@ -276,23 +275,29 @@ func sitemapAlternates(entries []localizedSitemapEntry, group []int, defaultLang
 	return alternates
 }
 
-func sitemapEligible(site *Site, document Document) bool {
+func sitemapEligible(_ *Site, document Document) bool {
 	if document.IsStatic() {
-		if path.Base(document.URL()) == "404.html" || site.cfg.IsConfigPath(strings.TrimPrefix(document.URL(), "/")) {
-			return false
-		}
-		drop, ok := liquid.FromDrop(document).(liquidtags.IterationKeyedMap)
-		return !ok || drop["sitemap"] != false
+		return false
 	}
 
 	page, ok := document.(pages.Page)
-	if !ok || !page.FrontMatter().Bool("sitemap", true) {
+	if !ok || !page.FrontMatter().Bool("sitemap", true) || sitemapNoIndex(page) {
 		return false
 	}
-	if page.FrontMatter().String("collection", "") != "" {
-		return true
+	return page.OutputExt() == ".html" && path.Base(page.URL()) != "404.html"
+}
+
+func sitemapNoIndex(page pages.Page) bool {
+	for _, value := range page.FrontMatter().StringArray("robots") {
+		for _, directive := range strings.FieldsFunc(value, func(r rune) bool {
+			return r == ',' || unicode.IsSpace(r)
+		}) {
+			if strings.EqualFold(directive, "noindex") {
+				return true
+			}
+		}
 	}
-	return page.OutputExt() == ".html" && page.URL() != "/404.html"
+	return false
 }
 
 func sitemapAbsoluteURL(site *Site, route string) string {
@@ -300,15 +305,6 @@ func sitemapAbsoluteURL(site *Site, route string) string {
 }
 
 func sitemapLastModified(document Document) string {
-	if document.IsStatic() {
-		if drop, ok := liquid.FromDrop(document).(liquidtags.IterationKeyedMap); ok {
-			if modified, ok := drop["modified_time"].(time.Time); ok {
-				return modified.Format("2006-01-02T15:04:05-07:00")
-			}
-		}
-		return ""
-	}
-
 	page, ok := document.(pages.Page)
 	if !ok {
 		return ""
