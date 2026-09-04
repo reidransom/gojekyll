@@ -74,24 +74,17 @@ type localizedRoute struct {
 // generation, returning its aggregate serving snapshot only after promotion
 // succeeds.
 func BuildLocalizedProject(base *Site) (*LocalizedProject, int, error) {
-	if base == nil || !base.cfg.Enabled() {
-		return nil, 0, fmt.Errorf("localized build requires localization configuration")
-	}
-	project, err := newLocalizationProject(base)
-	if err != nil {
-		return nil, 0, err
-	}
-	count, err := project.Build()
-	if err != nil {
-		return nil, count, err
-	}
-	return &LocalizedProject{project: project, routes: project.routes}, count, nil
+	return buildLocalizedProject(base, productionPublication{})
 }
 
 // BuildLocalizedDevelopmentProject constructs one complete localized
 // development generation in memory. It does not create, clean, write, or
 // promote the configured destination.
 func BuildLocalizedDevelopmentProject(base *Site) (*LocalizedProject, int, error) {
+	return buildLocalizedProject(base, newDevelopmentPublication())
+}
+
+func buildLocalizedProject(base *Site, publication localizedPublication) (*LocalizedProject, int, error) {
 	if base == nil || !base.cfg.Enabled() {
 		return nil, 0, fmt.Errorf("localized build requires localization configuration")
 	}
@@ -99,7 +92,7 @@ func BuildLocalizedDevelopmentProject(base *Site) (*LocalizedProject, int, error
 	if err != nil {
 		return nil, 0, err
 	}
-	count, servedDocuments, err := project.BuildDevelopment()
+	count, servedDocuments, err := project.build(publication)
 	if err != nil {
 		return nil, count, err
 	}
@@ -125,24 +118,23 @@ func (p *LocalizedProject) WatchFiles() (<-chan FilesEvent, error) {
 // Rebuild reads a fresh project and publishes a complete replacement
 // generation. The current project remains usable when the rebuild fails.
 func (p *LocalizedProject) Rebuild() (*LocalizedProject, int, error) {
-	fresh, err := FromDirectory(p.project.base.SourceDir(), p.project.base.flags)
-	if err != nil {
-		return nil, 0, err
-	}
-	fresh.SetAbsoluteURL(p.project.base.cfg.AbsoluteURL)
-	return BuildLocalizedProject(fresh)
+	return p.rebuild(BuildLocalizedProject)
 }
 
 // RebuildDevelopment reads a fresh project and materializes a complete
 // replacement development generation. The current project remains usable when
 // the rebuild fails.
 func (p *LocalizedProject) RebuildDevelopment() (*LocalizedProject, int, error) {
+	return p.rebuild(BuildLocalizedDevelopmentProject)
+}
+
+func (p *LocalizedProject) rebuild(build func(*Site) (*LocalizedProject, int, error)) (*LocalizedProject, int, error) {
 	fresh, err := FromDirectory(p.project.base.SourceDir(), p.project.base.flags)
 	if err != nil {
 		return nil, 0, err
 	}
 	fresh.SetAbsoluteURL(p.project.base.cfg.AbsoluteURL)
-	return BuildLocalizedDevelopmentProject(fresh)
+	return build(fresh)
 }
 
 // SetAbsoluteURL applies the serving URL to every locale before pages are
@@ -415,49 +407,30 @@ func newLocalizationProject(base *Site) (*localizationProject, error) {
 	}, nil
 }
 
-// Build constructs locale sites in deterministic order before rendering any
-// of them. Every prepared site has its own config, data map, pages,
-// collections, routes, renderer, and plugin instances. Static files are read
-// only by the first locale site and therefore retain project-root URLs.
-func (p *localizationProject) Build() (int, error) {
-	stage, cleanup, err := p.localizedBuildStage()
+// build constructs locale sites in deterministic order before rendering and
+// publishing each output through the selected materialization policy.
+func (p *localizationProject) build(publication localizedPublication) (int, map[string]LocalizedServedDocument, error) {
+	stage, cleanup, err := publication.start(p)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	defer cleanup()
 	if err := p.prepareLocalizedGeneration(stage); err != nil {
-		return 0, err
-	}
-
-	count, err := p.renderLocaleSites()
-	if err != nil {
-		return count, err
-	}
-	if count, err = p.renderAggregateDocuments(count); err != nil {
-		return count, err
-	}
-	return p.finishLocalizedBuild(stage, count)
-}
-
-// BuildDevelopment performs the shared localization lifecycle and materializes
-// its complete serving snapshot in memory without touching the destination.
-func (p *localizationProject) BuildDevelopment() (int, map[string]LocalizedServedDocument, error) {
-	if err := p.prepareLocalizedGeneration(""); err != nil {
-		return 0, nil, err
-	}
-	if err := p.prepareRenderedLocaleSites(); err != nil {
 		return 0, nil, err
 	}
 	routes, err := p.routeIndex()
 	if err != nil {
 		return 0, nil, err
 	}
-	servedDocuments, count, err := p.materializeDevelopmentDocuments()
+	count, err := p.renderAndMaterialize(publication)
 	if err != nil {
 		return count, nil, err
 	}
+	if err := publication.finish(p, stage); err != nil {
+		return count, nil, err
+	}
 	p.routes = routes
-	return count, servedDocuments, nil
+	return count, publication.servedDocuments(), nil
 }
 
 func (p *localizationProject) localizedBuildStage() (string, func(), error) {
@@ -549,78 +522,125 @@ func (p *localizationProject) prepareLocaleSite(stage string, sources map[string
 	return site, nil
 }
 
-func (p *localizationProject) renderLocaleSites() (int, error) {
-	count := 0
-	for _, site := range p.prepared {
-		if err := site.setTimeZone(); err != nil {
-			return count, err
-		}
-		if err := site.ensureRendered(); err != nil {
-			return count, fmt.Errorf("rendering locale %q: %w", site.localeKey, err)
-		}
-		written, err := writeLocaleDocuments(site)
-		count += written
-		if err != nil {
-			return count, err
-		}
-	}
-	return count, nil
-}
-
-func (p *localizationProject) prepareRenderedLocaleSites() error {
-	for _, site := range p.prepared {
-		if err := site.setTimeZone(); err != nil {
-			return err
-		}
-		if err := site.ensureRendered(); err != nil {
-			return fmt.Errorf("rendering locale %q: %w", site.localeKey, err)
-		}
-	}
-	return nil
-}
-
-func writeLocaleDocuments(site *Site) (int, error) {
-	count := 0
-	for _, document := range site.OutputDocs() {
-		count++
-		if !site.cfg.DryRun {
-			if err := site.WriteDoc(document); err != nil {
-				return count, fmt.Errorf("writing locale %q: %w", site.localeKey, err)
-			}
-		}
-	}
-	return count, nil
-}
-
-func (p *localizationProject) materializeDevelopmentDocuments() (map[string]LocalizedServedDocument, int, error) {
-	servedDocuments := make(map[string]LocalizedServedDocument)
+func (p *localizationProject) renderAndMaterialize(publication localizedPublication) (int, error) {
 	count := 0
 	for _, localeSite := range p.prepared {
+		if err := localeSite.setTimeZone(); err != nil {
+			return count, err
+		}
+		if err := localeSite.ensureRendered(); err != nil {
+			return count, fmt.Errorf("rendering locale %q: %w", localeSite.localeKey, err)
+		}
 		for _, document := range localeSite.OutputDocs() {
-			if _, removed := localeSite.removedRoutes[document.URL()]; removed {
+			if !publication.includeLocaleDocument(localeSite, document) {
 				continue
 			}
 			count++
-			served, err := materializeLocalizedDocument(localeSite, document)
-			if err != nil {
-				return nil, count, fmt.Errorf("materializing locale %q document %q: %w", localeSite.localeKey, document.URL(), err)
-			}
-			for _, alias := range localizedRouteAliases(document.URL()) {
-				servedDocuments[alias] = served
+			if err := publication.materializeLocaleDocument(localeSite, document); err != nil {
+				return count, err
 			}
 		}
 	}
 	for _, aggregate := range p.aggregateDocuments {
 		count++
-		served, err := materializeLocalizedDocument(aggregate.site, aggregate.document)
-		if err != nil {
-			return nil, count, fmt.Errorf("materializing aggregate %q: %w", aggregate.document.URL(), err)
-		}
-		for _, alias := range localizedRouteAliases(aggregate.document.URL()) {
-			servedDocuments[alias] = served
+		if err := publication.materializeAggregateDocument(aggregate); err != nil {
+			return count, err
 		}
 	}
-	return servedDocuments, count, nil
+	return count, nil
+}
+
+type localizedPublication interface {
+	start(*localizationProject) (string, func(), error)
+	includeLocaleDocument(*Site, Document) bool
+	materializeLocaleDocument(*Site, Document) error
+	materializeAggregateDocument(aggregateDocument) error
+	finish(*localizationProject, string) error
+	servedDocuments() map[string]LocalizedServedDocument
+}
+
+type productionPublication struct{}
+
+func (productionPublication) start(p *localizationProject) (string, func(), error) {
+	return p.localizedBuildStage()
+}
+
+func (productionPublication) includeLocaleDocument(*Site, Document) bool {
+	return true
+}
+
+func (productionPublication) materializeLocaleDocument(localeSite *Site, document Document) error {
+	if localeSite.cfg.DryRun {
+		return nil
+	}
+	if err := localeSite.WriteDoc(document); err != nil {
+		return fmt.Errorf("writing locale %q: %w", localeSite.localeKey, err)
+	}
+	return nil
+}
+
+func (productionPublication) materializeAggregateDocument(aggregate aggregateDocument) error {
+	return writeAggregateDocument(aggregate, aggregate.site.cfg.DryRun)
+}
+
+func (productionPublication) finish(p *localizationProject, stage string) error {
+	if p.base.cfg.DryRun {
+		return nil
+	}
+	return promoteLocalizedGeneration(stage, p.base.DestDir())
+}
+
+func (productionPublication) servedDocuments() map[string]LocalizedServedDocument {
+	return nil
+}
+
+type developmentPublication struct {
+	documents map[string]LocalizedServedDocument
+}
+
+func newDevelopmentPublication() *developmentPublication {
+	return &developmentPublication{documents: make(map[string]LocalizedServedDocument)}
+}
+
+func (*developmentPublication) start(*localizationProject) (string, func(), error) {
+	return "", func() {}, nil
+}
+
+func (*developmentPublication) includeLocaleDocument(localeSite *Site, document Document) bool {
+	_, removed := localeSite.removedRoutes[document.URL()]
+	return !removed
+}
+
+func (publication *developmentPublication) materializeLocaleDocument(localeSite *Site, document Document) error {
+	served, err := materializeLocalizedDocument(localeSite, document)
+	if err != nil {
+		return fmt.Errorf("materializing locale %q document %q: %w", localeSite.localeKey, document.URL(), err)
+	}
+	publication.record(document, served)
+	return nil
+}
+
+func (publication *developmentPublication) materializeAggregateDocument(aggregate aggregateDocument) error {
+	served, err := materializeLocalizedDocument(aggregate.site, aggregate.document)
+	if err != nil {
+		return fmt.Errorf("materializing aggregate %q: %w", aggregate.document.URL(), err)
+	}
+	publication.record(aggregate.document, served)
+	return nil
+}
+
+func (*developmentPublication) finish(*localizationProject, string) error {
+	return nil
+}
+
+func (publication *developmentPublication) servedDocuments() map[string]LocalizedServedDocument {
+	return publication.documents
+}
+
+func (publication *developmentPublication) record(document Document, served LocalizedServedDocument) {
+	for _, alias := range localizedRouteAliases(document.URL()) {
+		publication.documents[alias] = served
+	}
 }
 
 func materializeLocalizedDocument(site *Site, document Document) (LocalizedServedDocument, error) {
@@ -633,16 +653,6 @@ func materializeLocalizedDocument(site *Site, document Document) (LocalizedServe
 		document: document,
 		content:  content.String(),
 	}, nil
-}
-
-func (p *localizationProject) renderAggregateDocuments(count int) (int, error) {
-	for _, aggregate := range p.aggregateDocuments {
-		count++
-		if err := writeAggregateDocument(aggregate, p.base.cfg.DryRun); err != nil {
-			return count, err
-		}
-	}
-	return count, nil
 }
 
 func writeAggregateDocument(aggregate aggregateDocument, dryRun bool) error {
@@ -658,25 +668,8 @@ func writeAggregateDocument(aggregate aggregateDocument, dryRun bool) error {
 	return nil
 }
 
-func (p *localizationProject) finishLocalizedBuild(stage string, count int) (int, error) {
-	routes, err := p.routeIndex()
-	if err != nil {
-		return count, err
-	}
-	p.routes = routes
-	if p.base.cfg.DryRun {
-		return count, nil
-	}
-	if err := promoteLocalizedGeneration(stage, p.base.DestDir()); err != nil {
-		return count, err
-	}
-	return count, nil
-}
-
-// routeIndex records every validated route and its owning site. A completed
-// production generation builds it after publication; a development generation
-// builds it before materialization but does not expose it until every response
-// has rendered successfully.
+// routeIndex records every validated route and its owning site before
+// publication. It is installed only after the complete generation succeeds.
 func (p *localizationProject) routeIndex() (map[string]localizedRoute, error) {
 	routes := make(map[string]localizedRoute)
 	for _, localeSite := range p.prepared {

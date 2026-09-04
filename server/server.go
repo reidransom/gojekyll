@@ -150,17 +150,79 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 	s.m.RUnlock()
 
 	if project != nil {
-		s.localizedHandler(rw, r, project)
+		s.finalizeResponse(rw, r, localizedResponseSource{project: project})
 		return
 	}
+	s.finalizeResponse(rw, r, siteResponseSource{site: base})
+}
 
-	requestSite := base
+type responseSource interface {
+	response(string) (responseDocument, bool)
+	handleContentError(*Server, *http.Request, string, *site.Site, io.Writer, error)
+}
+
+type responseDocument interface {
+	Site() *site.Site
+	Document() site.Document
+	WriteTo(io.Writer) error
+}
+
+type renderedDocument struct {
+	site     *site.Site
+	document site.Document
+}
+
+func (d renderedDocument) Site() *site.Site {
+	return d.site
+}
+
+func (d renderedDocument) Document() site.Document {
+	return d.document
+}
+
+func (d renderedDocument) WriteTo(w io.Writer) error {
+	return d.site.WriteDocument(w, d.document)
+}
+
+type siteResponseSource struct {
+	site *site.Site
+}
+
+func (source siteResponseSource) response(urlpath string) (responseDocument, bool) {
+	document, found := source.site.URLPage(urlpath)
+	if !found {
+		return nil, false
+	}
+	return renderedDocument{site: source.site, document: document}, true
+}
+
+func (siteResponseSource) handleContentError(s *Server, r *http.Request, urlpath string, requestSite *site.Site, w io.Writer, err error) {
+	s.writeRenderError(r, urlpath, requestSite, w, err)
+}
+
+type localizedResponseSource struct {
+	project *site.LocalizedProject
+}
+
+func (source localizedResponseSource) response(urlpath string) (responseDocument, bool) {
+	document, found := source.project.ServedDocument(urlpath)
+	if !found {
+		return nil, false
+	}
+	return document, true
+}
+
+func (localizedResponseSource) handleContentError(s *Server, r *http.Request, _ string, _ *site.Site, _ io.Writer, err error) {
+	s.logResponseWriteError(r, err)
+}
+
+func (s *Server) finalizeResponse(rw http.ResponseWriter, r *http.Request, source responseSource) {
 	urlpath := r.URL.Path
-	p, found := base.URLPage(urlpath)
+	document, found := source.response(urlpath)
 	w := &responseWriter{Writer: rw}
 	if !found {
 		rw.WriteHeader(http.StatusNotFound)
-		p, found = base.Routes["/404.html"]
+		document, found = source.response("/404.html")
 	}
 	if !found {
 		if _, err := fmt.Fprintf(w, "404 page not found: %s\n", urlpath); err != nil {
@@ -168,7 +230,9 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	mimeType := mime.TypeByExtension(p.OutputExt())
+
+	requestSite := document.Site()
+	mimeType := mime.TypeByExtension(document.Document().OutputExt())
 	if mimeType != "" {
 		rw.Header().Set("Content-Type", mimeType)
 	}
@@ -176,15 +240,16 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 	if requestSite.Config().Watch && strings.HasPrefix(mimeType, "text/html;") {
 		documentWriter = NewLiveReloadInjector(documentWriter)
 	}
-	renderErr := requestSite.WriteDocument(documentWriter, p)
-	if renderErr == nil {
-		return
+	if err := document.WriteTo(documentWriter); err != nil {
+		if w.err != nil {
+			s.logResponseWriteError(r, w.err)
+			return
+		}
+		source.handleContentError(s, r, urlpath, requestSite, documentWriter, err)
 	}
-	if w.err != nil {
-		s.logResponseWriteError(r, w.err)
-		return
-	}
+}
 
+func (s *Server) writeRenderError(r *http.Request, urlpath string, requestSite *site.Site, documentWriter io.Writer, renderErr error) {
 	fmt.Fprintf(s.errorWriter(), "Error rendering %s: %s\n", urlpath, renderErr)
 	eng := liquid.NewEngine()
 	excerpt, path := fileErrorContext(renderErr)
@@ -198,40 +263,6 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	if _, err := io.WriteString(documentWriter, out); err != nil {
-		s.logResponseWriteError(r, err)
-	}
-}
-
-func (s *Server) localizedHandler(rw http.ResponseWriter, r *http.Request, project *site.LocalizedProject) {
-	urlpath := r.URL.Path
-	served, found := project.ServedDocument(urlpath)
-	w := &responseWriter{Writer: rw}
-	if !found {
-		rw.WriteHeader(http.StatusNotFound)
-		served, found = project.ServedDocument("/404.html")
-	}
-	if !found {
-		if _, err := fmt.Fprintf(w, "404 page not found: %s\n", urlpath); err != nil {
-			s.logResponseWriteError(r, err)
-		}
-		return
-	}
-
-	requestSite := served.Site()
-	document := served.Document()
-	mimeType := mime.TypeByExtension(document.OutputExt())
-	if mimeType != "" {
-		rw.Header().Set("Content-Type", mimeType)
-	}
-	var documentWriter io.Writer = w
-	if requestSite.Config().Watch && strings.HasPrefix(mimeType, "text/html;") {
-		documentWriter = NewLiveReloadInjector(documentWriter)
-	}
-	if err := served.WriteTo(documentWriter); err != nil {
-		if w.err != nil {
-			s.logResponseWriteError(r, w.err)
-			return
-		}
 		s.logResponseWriteError(r, err)
 	}
 }
