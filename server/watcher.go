@@ -11,8 +11,8 @@ import (
 	"github.com/reidransom/jigyll/site"
 )
 
-// watchReload observes one source watcher. Localized projects rebuild and
-// replace their complete aggregate snapshot for every event.
+// watchReload observes one source watcher. Localized projects materialize and
+// replace their complete aggregate development snapshot for every event.
 func (s *Server) watchReload() error {
 	s.m.RLock()
 	project := s.project
@@ -120,7 +120,7 @@ func (s *Server) reload(change site.FilesEvent) bool {
 	fmt.Printf("Re-reading: %v %v...\n", change, change.Paths)
 	start := time.Now()
 	if project != nil {
-		replacement, _, err := project.Rebuild()
+		replacement, _, err := project.RebuildDevelopment()
 		if err != nil {
 			s.reportReloadError(liveReload, err)
 			return false

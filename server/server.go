@@ -92,7 +92,7 @@ func (s *Server) ensureLocalizedProject() error {
 	if current != nil || !base.Config().Enabled() {
 		return nil
 	}
-	project, _, err := site.BuildLocalizedProject(base)
+	project, _, err := site.BuildLocalizedDevelopmentProject(base)
 	if err != nil {
 		return err
 	}
@@ -149,20 +149,18 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 	base := s.Site
 	s.m.RUnlock()
 
+	if project != nil {
+		s.localizedHandler(rw, r, project)
+		return
+	}
+
 	requestSite := base
 	urlpath := r.URL.Path
 	p, found := base.URLPage(urlpath)
-	if project != nil {
-		requestSite, p, found = project.URLPage(urlpath)
-	}
 	w := &responseWriter{Writer: rw}
 	if !found {
 		rw.WriteHeader(http.StatusNotFound)
-		if project != nil {
-			requestSite, p, found = project.URLPage("/404.html")
-		} else {
-			p, found = base.Routes["/404.html"]
-		}
+		p, found = base.Routes["/404.html"]
 	}
 	if !found {
 		if _, err := fmt.Fprintf(w, "404 page not found: %s\n", urlpath); err != nil {
@@ -200,6 +198,40 @@ func (s *Server) handler(rw http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	if _, err := io.WriteString(documentWriter, out); err != nil {
+		s.logResponseWriteError(r, err)
+	}
+}
+
+func (s *Server) localizedHandler(rw http.ResponseWriter, r *http.Request, project *site.LocalizedProject) {
+	urlpath := r.URL.Path
+	served, found := project.ServedDocument(urlpath)
+	w := &responseWriter{Writer: rw}
+	if !found {
+		rw.WriteHeader(http.StatusNotFound)
+		served, found = project.ServedDocument("/404.html")
+	}
+	if !found {
+		if _, err := fmt.Fprintf(w, "404 page not found: %s\n", urlpath); err != nil {
+			s.logResponseWriteError(r, err)
+		}
+		return
+	}
+
+	requestSite := served.Site()
+	document := served.Document()
+	mimeType := mime.TypeByExtension(document.OutputExt())
+	if mimeType != "" {
+		rw.Header().Set("Content-Type", mimeType)
+	}
+	var documentWriter io.Writer = w
+	if requestSite.Config().Watch && strings.HasPrefix(mimeType, "text/html;") {
+		documentWriter = NewLiveReloadInjector(documentWriter)
+	}
+	if err := served.WriteTo(documentWriter); err != nil {
+		if w.err != nil {
+			s.logResponseWriteError(r, w.err)
+			return
+		}
 		s.logResponseWriteError(r, err)
 	}
 }
