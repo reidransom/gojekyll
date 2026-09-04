@@ -11,8 +11,9 @@ import (
 	"github.com/reidransom/jigyll/site"
 )
 
-// watchReload observes one source watcher. Localized projects materialize and
-// replace their complete aggregate development snapshot for every event.
+// watchReload observes one source watcher. Localized projects use a
+// single-flight consumer so watch events cannot start concurrent development
+// snapshot rebuilds.
 func (s *Server) watchReload() error {
 	s.m.RLock()
 	project := s.project
@@ -30,6 +31,10 @@ func (s *Server) watchReload() error {
 	if err != nil {
 		return err
 	}
+	if project != nil {
+		go s.watchLocalizedReloads(changes)
+		return nil
+	}
 	go func() {
 		for change := range changes {
 			batch := s.liveReloadBatch(change)
@@ -39,6 +44,94 @@ func (s *Server) watchReload() error {
 		}
 	}()
 	return nil
+}
+
+func (s *Server) watchLocalizedReloads(changes <-chan site.FilesEvent) {
+	runLocalizedWatchReloads(changes, s.reload, func(change site.FilesEvent) {
+		s.liveReloadBatch(change).Deliver()
+	})
+}
+
+type localizedReloadResult struct {
+	change  site.FilesEvent
+	success bool
+}
+
+// runLocalizedWatchReloads serializes complete localized development rebuilds.
+// Events observed while an attempt runs are unioned into one follow-up attempt.
+func runLocalizedWatchReloads(
+	changes <-chan site.FilesEvent,
+	reload func(site.FilesEvent) bool,
+	deliver func(site.FilesEvent),
+) {
+	var (
+		pending *site.FilesEvent
+		done    <-chan localizedReloadResult
+	)
+	for {
+		if done == nil {
+			change, open := <-changes
+			if !open {
+				return
+			}
+			done = startLocalizedReload(change, reload)
+			continue
+		}
+
+		select {
+		case change, open := <-changes:
+			if !open {
+				changes = nil
+				continue
+			}
+			if pending == nil {
+				pending = &change
+			} else {
+				merged := mergeWatchChanges(*pending, change)
+				pending = &merged
+			}
+		case result := <-done:
+			if result.success {
+				deliver(result.change)
+			}
+			if pending != nil {
+				done = startLocalizedReload(*pending, reload)
+				pending = nil
+			} else if changes == nil {
+				return
+			} else {
+				done = nil
+			}
+		}
+	}
+}
+
+func startLocalizedReload(change site.FilesEvent, reload func(site.FilesEvent) bool) <-chan localizedReloadResult {
+	done := make(chan localizedReloadResult, 1)
+	go func() {
+		done <- localizedReloadResult{change: change, success: reload(change)}
+	}()
+	return done
+}
+
+func mergeWatchChanges(first, second site.FilesEvent) site.FilesEvent {
+	paths := make([]string, 0, len(first.Paths)+len(second.Paths))
+	seen := make(map[string]struct{}, cap(paths))
+	for _, path := range first.Paths {
+		if _, duplicate := seen[path]; duplicate {
+			continue
+		}
+		seen[path] = struct{}{}
+		paths = append(paths, path)
+	}
+	for _, path := range second.Paths {
+		if _, duplicate := seen[path]; duplicate {
+			continue
+		}
+		seen[path] = struct{}{}
+		paths = append(paths, path)
+	}
+	return site.FilesEvent{Time: second.Time, Paths: paths}
 }
 
 // liveReloadIntent describes the minimum work a client must perform for one
