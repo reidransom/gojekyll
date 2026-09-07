@@ -42,6 +42,17 @@ Jekyll has these; Jigyll doesn't.
 Jigyll additions with no Jekyll counterpart.
 {% endcase %}
 {{ trimmed }}
+{% if status == "modified" %}
+
+#### Sass asset pipeline
+
+{% assign comparison = site.data.compat.assets.comparison %}
+| Behavior | Jigyll | Ruby Jekyll |
+| --- | --- | --- |
+{% for row in comparison -%}
+| {{ row.behavior }} | {{ row.jigyll }} | {{ row.jekyll }} |
+{% endfor -%}
+{% endif %}
 {% endunless %}
 {% endfor %}
 

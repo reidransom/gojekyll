@@ -3,7 +3,7 @@ title: Assets
 parent: Content
 nav_order: 6
 permalink: /docs/assets/
-description: Sass/SCSS conversion in Jigyll — always on, always minified, no CoffeeScript.
+description: Sass and SCSS conversion in Jigyll — Liquid first, compressed CSS, limited options.
 ---
 
 Jigyll provides built-in support for [Sass](https://sass-lang.com/). To have
@@ -24,15 +24,12 @@ placed in the same directory it came from. For instance, a file named
 `css/styles.scss` is processed and written to your site's destination folder
 as `css/styles.css`.
 
-> **Differs from Jekyll.** Two things to know before reaching for Liquid or
-> CoffeeScript here:
->
-> - **Liquid is not processed in Sass files.** The body after the front
->   matter goes straight to the Sass compiler. In Jekyll, asset files run
->   through Liquid first.
-> - **CoffeeScript is not supported.** There is no equivalent of the
->   `jekyll-coffeescript` plugin; `.coffee` files are copied verbatim as
->   static files.
+Like Jekyll, Jigyll processes the body after front matter through Liquid before
+sending it to the Sass compiler.
+
+> **Differs from Jekyll.** CoffeeScript is not supported. There is no equivalent
+> of the `jekyll-coffeescript` plugin; `.coffee` files without front matter are
+> copied verbatim as static files.
 
 ## Sass/SCSS
 
@@ -48,8 +45,9 @@ sass:
 ```
 
 > **Differs from Jekyll.** `sass_dir` is the only `sass:` option Jigyll
-> honors. Output is **always minified** — `style` is ignored — and
-> `sourcemaps` and `load_paths` are not supported. Conversion requires the
+> honors. Output is **always compressed** — `style` is ignored — and
+> `load_paths`, `sourcemap`, Sass warning controls, and deprecation controls are
+> not supported. Conversion requires the
 > [Dart Sass](https://sass-lang.com/dart-sass/) `sass` executable on your
 > `PATH` (the [install script](/docs/installation/) sets this up for you),
 > and compiled CSS is cached in `/tmp/jigyll-$USER`.

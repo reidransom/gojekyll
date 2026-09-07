@@ -161,10 +161,12 @@ sass:
   sass_dir: _sass   # the default
 ```
 
-> **Differs from Jekyll.** Output is **always minified** — `style` is ignored.
-> Conversion requires the [Dart Sass](https://sass-lang.com/dart-sass/)
-> `sass` executable on your `PATH`. Compiled CSS is cached in
-> `/tmp/jigyll-$USER`, not `./.sass-cache`.
+> **Differs from Jekyll.** Output is **always compressed** — `style` is ignored.
+> `load_paths`, `sourcemap`, Sass warning controls, and deprecation controls are
+> not supported. Conversion requires the
+> [Dart Sass](https://sass-lang.com/dart-sass/) `sass` executable on your
+> `PATH`. Compiled CSS is cached in `/tmp/jigyll-$USER`, not
+> `./.sass-cache`.
 
 ## Localization
 
